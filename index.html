@@ -1,0 +1,459 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Моя зарплата массажиста</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Layout: narrow phone column — big month total, quick-tap service pads, day-grouped journal */
+:root{
+  --bg:#eef2ef; --surface:#ffffff; --ink:#16221d; --muted:#5d6e66; --line:#d6dfd9;
+  --accent:#2c6a53; --accent-ink:#ffffff; --accent-soft:#dfece5; --warn:#a24f2a;
+  --display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1613; --surface:#17211c; --ink:#e4ede8; --muted:#90a39a; --line:#2a3832;
+  --accent:#7fc4a5; --accent-ink:#0f1613; --accent-soft:#1d3128; --warn:#e59a74; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1613; --surface:#17211c; --ink:#e4ede8; --muted:#90a39a; --line:#2a3832;
+  --accent:#7fc4a5; --accent-ink:#0f1613; --accent-soft:#1d3128; --warn:#e59a74; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.month{display:flex;align-items:center;gap:6px}
+.month b{font-family:var(--display);font-weight:500;font-size:15px;min-width:9.5em;text-align:center;text-transform:capitalize}
+.icon{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:18px;line-height:1}
+.sync{font-size:12px;color:var(--muted)}
+.hero{display:flex;flex-direction:column;gap:4px}
+.label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.big{font-family:var(--display);font-weight:700;font-size:clamp(34px,10vw,48px);line-height:1.05;letter-spacing:-.01em}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stats div{background:var(--surface);padding:10px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stats span{font-size:11px;color:var(--muted)}
+.stats strong{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats .due strong{color:var(--accent)}
+@media (max-width:420px){.stats{grid-template-columns:repeat(2,1fr)}}
+.tabs{display:flex;gap:4px;background:var(--accent-soft);padding:4px;border-radius:999px}
+.tabs button{flex:1;border:0;background:transparent;padding:8px 6px;border-radius:999px;font-weight:500;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+h2{font-family:var(--display);font-weight:500;font-size:14px;margin:0;text-wrap:balance}
+.section{display:flex;flex-direction:column;gap:10px}
+.row-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.pads{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pad{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:4px;transition:transform .08s}
+.pad:active{transform:scale(.97)}
+.pad .n{font-weight:600;line-height:1.25}
+.pad .p{font-size:13px;color:var(--muted)}
+.pad .e{font-size:13px;color:var(--accent);font-weight:600}
+.pad.flash{border-color:var(--accent);background:var(--accent-soft)}
+.datepick{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.datepick input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 8px}
+.day{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.day-h{display:flex;justify-content:space-between;padding:8px 12px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line)}
+.day-h b{color:var(--ink);font-weight:600}
+.item{border:0;background:transparent;width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 12px;text-align:left;border-top:1px solid var(--line)}
+.day-h + .item{border-top:0}
+.item .s{font-weight:500;min-width:0}
+.item .m{font-size:13px;color:var(--muted)}
+.item .r{text-align:right;font-weight:600;color:var(--accent)}
+.edit{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:4px 12px 12px;background:var(--accent-soft)}
+.edit label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.edit input,.edit select,.field input,.field select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+.edit .full{grid-column:1/-1}
+.actions{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:500}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn[disabled]{opacity:.6;cursor:default}
+.btn.danger{color:var(--warn);border-color:transparent;background:transparent;padding-inline:4px}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:14px}
+.svc{display:grid;grid-template-columns:1fr 90px 70px 64px 32px;gap:6px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}
+.svc:first-child{border-top:0}
+.field{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted);min-width:0}
+.svc .x{width:32px;height:34px;border:0;background:transparent;color:var(--warn);font-size:18px}
+@media (max-width:420px){.svc{grid-template-columns:1fr 1fr 32px}.svc .f-name{grid-column:1/3}.svc .x{grid-row:1;grid-column:3}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 12px}
+.pay-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
+.pay-form .full{grid-column:1/-1}
+.pay{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.pay:first-child{border-top:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;z-index:5}
+@media (prefers-reduced-motion:reduce){.pad{transition:none}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="month">
+      <button class="icon" id="prevM" aria-label="Предыдущий месяц">‹</button>
+      <b id="mLabel"></b>
+      <button class="icon" id="nextM" aria-label="Следующий месяц">›</button>
+    </div>
+    <span class="sync" id="sync">Загрузка…</span>
+  </div>
+
+  <div class="hero">
+    <span class="label">Заработано за месяц</span>
+    <div class="big num" id="earned">0 ₴</div>
+  </div>
+
+  <div class="stats num" id="stats"></div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="t-log" aria-selected="true" data-tab="log">Сеансы</button>
+    <button role="tab" id="t-pay" aria-selected="false" data-tab="pay">Выплаты</button>
+    <button role="tab" id="t-svc" aria-selected="false" data-tab="svc">Услуги</button>
+    <button role="tab" id="t-alt" aria-selected="false" data-tab="alt">Altegio</button>
+  </div>
+
+  <div id="view"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const DEFAULT_SERVICES=[
+  {id:"s1",name:"Классический массаж, 60 мин",price:800,type:"pct",val:40},
+  {id:"s2",name:"Массаж спины, 30 мин",price:500,type:"pct",val:40},
+  {id:"s3",name:"Антицеллюлитный, 60 мин",price:900,type:"pct",val:40},
+  {id:"s4",name:"Лимфодренажный, 60 мин",price:1000,type:"pct",val:40},
+  {id:"s5",name:"Массаж лица, 30 мин",price:600,type:"pct",val:40}
+];
+const S={uid:null,db:null,mode:"loading",settings:{services:DEFAULT_SERVICES.slice()},
+  month:ym(new Date()),data:{items:[],payouts:[]},tab:"log",open:null,addDate:todayStr(),unsub:null,timer:null};
+
+function pad2(n){return String(n).padStart(2,"0")}
+function todayStr(){const d=new Date();return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate())}
+function ym(d){return d.getFullYear()+"-"+pad2(d.getMonth()+1)}
+function money(n){return Math.round(n||0).toLocaleString("ru-RU")+" ₴"}
+function uid(){return Math.random().toString(36).slice(2,10)}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function earnOf(it){const base=it.type==="fixed"?Number(it.val)||0:(Number(it.price)||0)*(Number(it.val)||0)/100;return base+(Number(it.tip)||0)}
+function rateText(o){return o.type==="fixed"?money(o.val)+" за сеанс":(o.val||0)+"%"}
+function monthTitle(k){const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("ru-RU",{month:"long",year:"numeric"}).replace(" г.","")}
+function shiftMonth(k,d){const [y,m]=k.split("-").map(Number);return ym(new Date(y,m-1+d,1))}
+function monthBounds(k){const [y,m]=k.split("-").map(Number);return [k+"-01",k+"-"+pad2(new Date(y,m,0).getDate())]}
+
+/* ---------- storage: cloud (private per person) with local fallback ---------- */
+function lsGet(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+const queues={};
+function write(docName,body){
+  if(S.mode==="cloud"&&S.db&&S.uid){
+    const ref=S.db.doc("data/users/"+S.uid+"/"+docName);
+    queues[docName]=(queues[docName]||Promise.resolve()).then(()=>ref.set(body)).catch(e=>{
+      toast(e&&e.code==="quota_exceeded"?"Место в хранилище закончилось":"Не удалось сохранить, проверьте интернет");});
+  } else lsSet("mp:"+docName,body);
+}
+function saveSettings(){write("settings",S.settings)}
+function saveMonth(){write("m-"+S.month,S.data)}
+
+function watchMonth(){
+  if(S.unsub){S.unsub();S.unsub=null}
+  clearTimeout(S.timer);
+  if(S.mode==="cloud"){
+    setSync("Синхронизация…");
+    S.timer=setTimeout(()=>setSync("Нет связи с сервером"),10000);
+    S.unsub=S.db.doc("data/users/"+S.uid+"/m-"+S.month).onSnapshot(snap=>{
+      const d=snap.exists?snap.data():null;
+      S.data={items:(d&&d.items)?d.items.map(x=>({...x})):[],payouts:(d&&d.payouts)?d.payouts.map(x=>({...x})):[]};
+      if(!snap.metadata.fromCache){clearTimeout(S.timer);setSync("Сохранено в облаке")}
+      render();
+    },()=>{clearTimeout(S.timer);setSync("Нет связи с сервером")});
+  } else {
+    const d=lsGet("mp:m-"+S.month,null);
+    S.data={items:(d&&d.items)||[],payouts:(d&&d.payouts)||[]};
+    render();
+  }
+}
+function setSync(t){document.getElementById("sync").textContent=t}
+
+async function init(){
+  render();
+  let db=null,user=null;
+  try{ if(window.claude&&window.claude.use){[db,user]=await Promise.all([window.claude.use("db"),window.claude.use("user")])} }catch(e){}
+  let id=null; try{ if(user) id=await user.id() }catch(e){}
+  if(db&&id){
+    S.db=db;S.uid=id;S.mode="cloud";
+    db.doc("data/users/"+id+"/settings").onSnapshot(snap=>{
+      if(snap.exists){const d=snap.data();if(d&&Array.isArray(d.services))S.settings={services:d.services.map(x=>({...x}))};render()}
+    },()=>{});
+  } else {
+    S.mode="local";
+    const st=lsGet("mp:settings",null); if(st&&Array.isArray(st.services))S.settings=st;
+    setSync("Сохраняется на этом устройстве");
+  }
+  watchMonth();
+}
+
+/* ---------- actions ---------- */
+function addSession(svcId){
+  const sv=S.settings.services.find(s=>s.id===svcId); if(!sv)return;
+  const [lo,hi]=monthBounds(S.month);
+  let date=S.addDate; if(date<lo||date>hi)date=lo;
+  S.data.items.push({id:uid(),date,svc:sv.name,price:Number(sv.price)||0,type:sv.type,val:Number(sv.val)||0,tip:0,note:""});
+  saveMonth(); render();
+  const b=document.querySelector('[data-add="'+svcId+'"]'); if(b){b.classList.add("flash");setTimeout(()=>b.classList.remove("flash"),350)}
+  toast("Добавлено: "+sv.name.split(",")[0]);
+}
+let toastT;
+function toast(t){const el=document.getElementById("toast");el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,1800)}
+
+/* ---------- render ---------- */
+function totals(){
+  const items=S.data.items,earned=items.reduce((a,i)=>a+earnOf(i),0);
+  const kassa=items.reduce((a,i)=>a+(Number(i.price)||0),0);
+  const paid=S.data.payouts.reduce((a,p)=>a+(Number(p.amount)||0),0);
+  return {count:items.length,earned,kassa,paid,due:earned-paid};
+}
+function render(){
+  document.getElementById("mLabel").textContent=monthTitle(S.month);
+  const t=totals();
+  document.getElementById("earned").textContent=money(t.earned);
+  document.getElementById("stats").innerHTML=
+    `<div><span>Сеансов</span><strong>${t.count}</strong></div>
+     <div><span>Касса</span><strong>${money(t.kassa)}</strong></div>
+     <div><span>Получено</span><strong>${money(t.paid)}</strong></div>
+     <div class="due"><span>К получению</span><strong>${money(t.due)}</strong></div>`;
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
+  const v=document.getElementById("view");
+  if(S.tab==="log")v.innerHTML=renderLog();
+  else if(S.tab==="pay")v.innerHTML=renderPay(t);
+  else if(S.tab==="svc")v.innerHTML=renderSvc();
+  else v.innerHTML=renderAlt();
+}
+function renderLog(){
+  const [lo,hi]=monthBounds(S.month);
+  const pickDate=(S.addDate>=lo&&S.addDate<=hi)?S.addDate:lo;
+  const svcs=S.settings.services;
+  let h=`<div class="section">
+    <div class="row-h"><h2>Сделал массаж — нажмите</h2>
+      <label class="datepick">дата <input type="date" id="addDate" value="${pickDate}" min="${lo}" max="${hi}"></label></div>
+    ${svcs.length?`<div class="pads">${svcs.map(s=>`<button class="pad" data-add="${s.id}">
+      <span class="n">${esc(s.name)}</span><span class="p num">${money(s.price)} · ${rateText(s)}</span>
+      <span class="e num">+${money(earnOf(s))}</span></button>`).join("")}</div>`
+      :`<div class="empty">Добавьте свои услуги во вкладке «Мои услуги»</div>`}
+  </div>`;
+  const items=S.data.items.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  if(altReady())h+=`<div class="section" style="margin-top:16px"><button class="btn primary" id="altImport"${A.busy?" disabled":""}>${A.busy?"Загружаю из Altegio…":"Загрузить сеансы из Altegio за "+monthTitle(S.month)}</button></div>`;
+  h+=`<div class="section" style="margin-top:20px"><h2>Журнал</h2>`;
+  if(!items.length){h+=`<div class="empty">В этом месяце сеансов пока нет.<br>Нажмите на услугу выше, и сеанс появится здесь.</div>`}
+  const days={};items.forEach(i=>(days[i.date]=days[i.date]||[]).push(i));
+  Object.keys(days).forEach(d=>{
+    const list=days[d],sum=list.reduce((a,i)=>a+earnOf(i),0);
+    const dl=new Date(d+"T12:00").toLocaleDateString("ru-RU",{weekday:"short",day:"numeric",month:"long"});
+    h+=`<div class="day"><div class="day-h"><span>${dl} · ${list.length} сеанс.</span><b class="num">${money(sum)}</b></div>`;
+    list.forEach(i=>{
+      h+=`<button class="item" data-open="${i.id}" aria-expanded="${S.open===i.id}">
+        <span class="s">${esc(i.svc)}</span><span class="r num">+${money(earnOf(i))}</span>
+        <span class="m num">${money(i.price)} · ${rateText(i)}${Number(i.tip)?" · чаевые "+money(i.tip):""}${i.note?" · "+esc(i.note):""}</span><span></span></button>`;
+      if(S.open===i.id)h+=`<div class="edit" data-edit="${i.id}">
+        <label>Цена, ₴<input id="e-price" type="number" inputmode="numeric" min="0" data-f="price" value="${i.price}"></label>
+        <label>Чаевые, ₴<input id="e-tip" type="number" inputmode="numeric" min="0" data-f="tip" value="${i.tip||0}"></label>
+        <label>Мне платят<select id="e-type" data-f="type"><option value="pct"${i.type!=="fixed"?" selected":""}>% от цены</option><option value="fixed"${i.type==="fixed"?" selected":""}>₴ за сеанс</option></select></label>
+        <label>${i.type==="fixed"?"Сумма, ₴":"Процент"}<input id="e-val" type="number" inputmode="decimal" min="0" data-f="val" value="${i.val}"></label>
+        <label>Дата<input id="e-date" type="date" data-f="date" value="${i.date}" min="${lo}" max="${hi}"></label>
+        <label>Заметка<input id="e-note" type="text" data-f="note" value="${esc(i.note)}" placeholder="клиент, скидка…"></label>
+        <div class="actions"><button class="btn danger" data-del="${i.id}">Удалить сеанс</button><button class="btn primary" data-close>Готово</button></div></div>`;
+    });
+    h+=`</div>`;
+  });
+  return h+`</div>`;
+}
+function renderPay(t){
+  const [lo,hi]=monthBounds(S.month);
+  const list=S.data.payouts.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  return `<div class="section">
+    <h2>Что вам уже выплатили</h2>
+    <p class="hint">Записывайте аванс и зарплату. «К получению» = заработано минус выплачено.</p>
+    <form class="pay-form" id="payForm">
+      <label class="field">Сумма, ₴<input id="p-amount" type="number" inputmode="numeric" min="1" required placeholder="2000"></label>
+      <label class="field">Дата<input id="p-date" type="date" value="${(todayStr()>=lo&&todayStr()<=hi)?todayStr():lo}" min="${lo}" max="${hi}" required></label>
+      <label class="field full">Комментарий<input id="p-note" type="text" placeholder="аванс, зарплата…"></label>
+      <button class="btn primary full" type="submit">Записать выплату</button>
+    </form>
+    ${list.length?`<div class="card">${list.map(p=>`<div class="pay"><span>${new Date(p.date+"T12:00").toLocaleDateString("ru-RU",{day:"numeric",month:"long"})}${p.note?" · "+esc(p.note):""}</span>
+      <span style="display:flex;gap:8px;align-items:center"><b class="num">${money(p.amount)}</b><button class="btn danger" data-delpay="${p.id}" aria-label="Удалить выплату">✕</button></span></div>`).join("")}</div>`
+    :`<div class="empty">Выплат в этом месяце пока нет.</div>`}
+    <p class="hint num">Заработано ${money(t.earned)} · выплачено ${money(t.paid)} · осталось <b>${money(t.due)}</b></p>
+  </div>`;
+}
+function renderSvc(){
+  return `<div class="section">
+    <h2>Мои услуги и ставки</h2>
+    <p class="hint">Цены и проценты здесь примерные — поставьте свои. Изменения касаются только новых сеансов, старые не пересчитываются.</p>
+    <div class="card">${S.settings.services.map(s=>`<div class="svc" data-svc="${s.id}">
+      <label class="field f-name">Услуга<input id="n-${s.id}" type="text" data-sf="name" value="${esc(s.name)}"></label>
+      <label class="field">Цена, ₴<input id="p-${s.id}" type="number" inputmode="numeric" min="0" data-sf="price" value="${s.price}"></label>
+      <label class="field">Платят<select id="t-${s.id}" data-sf="type"><option value="pct"${s.type!=="fixed"?" selected":""}>%</option><option value="fixed"${s.type==="fixed"?" selected":""}>₴</option></select></label>
+      <label class="field">${s.type==="fixed"?"₴":"%"}<input id="v-${s.id}" type="number" inputmode="decimal" min="0" data-sf="val" value="${s.val}"></label>
+      <button class="x" data-delsvc="${s.id}" aria-label="Удалить услугу">✕</button></div>`).join("")}</div>
+    <button class="btn" id="addSvc">+ Добавить услугу</button>
+  </div>`;
+}
+
+/* ---------- Altegio ---------- */
+/* Ключи и токен хранятся только на этом устройстве (localStorage), в облако не уходят. Пароль не сохраняется. */
+const A_BASE="https://api.alteg.io/api/v1";
+const A=Object.assign({partner:"",login:"",userToken:"",company:"",companyName:"",companies:[],staff:"",staffName:"",staffList:[],defPct:40,onlyCame:true},lsGet("mp:altegio",{}));
+A.busy=false;A.msg="";
+function altSave(){const {busy,msg,...rest}=A;lsSet("mp:altegio",rest)}
+function altReady(){return !!(A.partner&&A.userToken&&A.company&&A.staff)}
+const isApp=!!(window.Native&&window.Native.request);
+const pending={};
+window.__nativeCb=function(id,status,body){const p=pending[id];if(p){delete pending[id];p({status:status,body:body})}};
+function httpReq(method,url,headers,body){
+  if(isApp)return new Promise(res=>{const id=uid();pending[id]=res;window.Native.request(id,JSON.stringify({method,url,headers,body:body||null}))});
+  return fetch(url,{method,headers,body:body||undefined}).then(async r=>({status:r.status,body:await r.text()})).catch(e=>({status:0,body:String(e)}));
+}
+async function aCall(method,path,body,withUser){
+  let auth="Bearer "+A.partner.trim(); if(withUser)auth+=", User "+A.userToken;
+  const r=await httpReq(method,A_BASE+path,{"Accept":"application/vnd.api.v2+json","Content-Type":"application/json","Authorization":auth},body?JSON.stringify(body):null);
+  let j=null; try{j=JSON.parse(r.body)}catch(e){}
+  if(r.status===0)throw new Error(isApp?"Нет связи с Altegio. Проверьте интернет.":"Загрузка из Altegio работает только в приложении на телефоне.");
+  if(r.status===401||r.status===403)throw new Error("Altegio отказал в доступе ("+r.status+"). Проверьте API-ключ или войдите заново."+(j&&j.meta&&j.meta.message?" Ответ: "+j.meta.message:""));
+  if(r.status>=400||(j&&j.success===false))throw new Error((j&&j.meta&&j.meta.message)||(j&&j.message)||("Ошибка Altegio "+r.status));
+  return j||{};
+}
+async function altLogin(){
+  const partner=document.getElementById("a-partner").value.trim();
+  const login=document.getElementById("a-login").value.trim();
+  const pass=document.getElementById("a-pass").value;
+  if(!partner||!login||!pass){A.msg="Заполните API-ключ, логин и пароль.";return render()}
+  A.partner=partner;A.login=login;A.busy=true;A.msg="";render();
+  try{
+    const j=await aCall("POST","/auth",{login,password:pass},false);
+    const tok=j.data&&(j.data.user_token||j.data.token);
+    if(!tok)throw new Error("Altegio не вернул токен. Проверьте логин и пароль.");
+    A.userToken=tok;
+    try{
+      const c=await aCall("GET","/companies?my=1",null,true);
+      A.companies=(Array.isArray(c.data)?c.data:[]).map(x=>({id:String(x.id),name:x.title||x.public_title||("Салон "+x.id)}));
+      if(A.companies.length===1){A.company=A.companies[0].id;A.companyName=A.companies[0].name;await altLoadStaff()}
+    }catch(e){A.companies=[]}
+    A.msg="Вход выполнен.";
+  }catch(e){A.msg=e.message}
+  A.busy=false;altSave();render();
+}
+async function altLoadStaff(){
+  if(!A.company)return;
+  try{
+    let j; try{j=await aCall("GET","/company/"+encodeURIComponent(A.company)+"/staff",null,true)}catch(e){j=await aCall("GET","/book_staff/"+encodeURIComponent(A.company),null,false)}
+    A.staffList=(Array.isArray(j.data)?j.data:[]).map(x=>({id:String(x.id),name:x.name||("Сотрудник "+x.id)}));
+  }catch(e){A.staffList=[];A.msg="Не удалось получить список сотрудников: "+e.message+" Впишите свой ID вручную."}
+}
+async function altImport(){
+  if(!altReady()||A.busy)return;
+  const [lo,hi]=monthBounds(S.month);
+  A.busy=true;render();
+  try{
+    let all=[];
+    for(let p=1;p<=25;p++){
+      const j=await aCall("GET","/records/"+encodeURIComponent(A.company)+"?staff_id="+encodeURIComponent(A.staff)+"&start_date="+lo+"&end_date="+hi+"&count=200&page="+p,null,true);
+      const d=Array.isArray(j.data)?j.data:[]; all=all.concat(d); if(d.length<200)break;
+    }
+    const have=new Set(S.data.items.map(i=>i.alt).filter(Boolean));
+    let added=0,skipped=0;
+    all.forEach(rec=>{
+      if(rec.deleted){return}
+      if(A.onlyCame&&Number(rec.attendance)!==1){skipped++;return}
+      if(rec.staff_id&&String(rec.staff_id)!==String(A.staff))return;
+      const date=String(rec.date||rec.datetime||"").slice(0,10); if(date<lo||date>hi)return;
+      (rec.services||[]).forEach(sv=>{
+        const key="a"+rec.id+"-"+sv.id; if(have.has(key))return;
+        const title=sv.title||"Услуга";
+        const local=S.settings.services.find(x=>x.name.trim().toLowerCase()===title.trim().toLowerCase());
+        const price=Number(sv.cost!=null?sv.cost:(sv.cost_to_pay!=null?sv.cost_to_pay:sv.first_cost))||0;
+        S.data.items.push({id:uid(),alt:key,date,svc:title,price,type:local?local.type:"pct",val:local?Number(local.val)||0:Number(A.defPct)||0,tip:0,note:"из Altegio"});
+        have.add(key);added++;
+      });
+    });
+    if(added)saveMonth();
+    toast(added?("Добавлено сеансов: "+added):"Новых сеансов нет");
+    A.msg="Последняя загрузка: добавлено "+added+(A.onlyCame&&skipped?", пропущено записей без отметки «пришёл»: "+skipped:"")+".";
+  }catch(e){A.msg=e.message;toast("Не получилось загрузить")}
+  A.busy=false;altSave();render();
+}
+function renderAlt(){
+  const connected=!!(A.partner&&A.userToken);
+  let h=`<div class="section"><h2>Загрузка сеансов из Altegio</h2>`;
+  if(!isApp)h+=`<p class="hint">Загрузка из Altegio работает в приложении для Android. В этой веб-версии настройки можно посмотреть, но связь с Altegio не установится.</p>`;
+  h+=`<p class="hint">Ключ, токен и настройки хранятся только на этом телефоне. Пароль не сохраняется, он нужен один раз для входа.</p>`;
+  if(A.msg)h+=`<p class="hint" style="color:var(--ink)"><b>${esc(A.msg)}</b></p>`;
+  if(!connected){
+    h+=`<form class="pay-form" id="altLoginForm">
+      <label class="field full">API-ключ из Marketplace Altegio<input id="a-partner" type="text" autocomplete="off" value="${esc(A.partner)}" placeholder="длинная строка из настроек аккаунта Marketplace"></label>
+      <label class="field">Логин Altegio<input id="a-login" type="text" autocomplete="username" value="${esc(A.login)}" placeholder="телефон или email"></label>
+      <label class="field">Пароль<input id="a-pass" type="password" autocomplete="current-password"></label>
+      <button class="btn primary full" type="submit"${A.busy?" disabled":""}>${A.busy?"Вхожу…":"Войти в Altegio"}</button></form>`;
+  } else {
+    h+=`<div class="card" style="padding:12px;display:flex;flex-direction:column;gap:10px">
+      <label class="field">Салон${A.companies.length?`<select id="a-company"><option value="">— выберите —</option>${A.companies.map(c=>`<option value="${esc(c.id)}"${c.id===A.company?" selected":""}>${esc(c.name)}</option>`).join("")}</select>`
+        :`<input id="a-company" type="text" inputmode="numeric" value="${esc(A.company)}" placeholder="ID салона (число)">`}</label>
+      <label class="field">Я в Altegio${A.staffList.length?`<select id="a-staff"><option value="">— выберите себя —</option>${A.staffList.map(s=>`<option value="${esc(s.id)}"${s.id===A.staff?" selected":""}>${esc(s.name)}</option>`).join("")}</select>`
+        :`<input id="a-staff" type="text" inputmode="numeric" value="${esc(A.staff)}" placeholder="ID сотрудника (число)">`}</label>
+      ${A.company&&!A.staffList.length?`<button class="btn" id="altStaff">Показать список сотрудников</button>`:""}
+      <label class="field">Мой процент для услуг, которых нет в «Услугах»<input id="a-pct" type="number" inputmode="decimal" min="0" value="${A.defPct}"></label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input id="a-came" type="checkbox"${A.onlyCame?" checked":""}> Брать только записи с отметкой «клиент пришёл»</label>
+      <p class="hint">Если услуга из Altegio называется так же, как во вкладке «Услуги», возьмётся ваш процент оттуда. Повторная загрузка не создаёт дублей.</p>
+      ${altReady()?`<button class="btn primary" id="altImport"${A.busy?" disabled":""}>${A.busy?"Загружаю…":"Загрузить сеансы за "+monthTitle(S.month)}</button>`:`<p class="hint">Выберите салон и себя, чтобы загружать сеансы.</p>`}
+      <button class="btn danger" id="altLogout" style="align-self:flex-start">Отключить Altegio</button></div>`;
+  }
+  return h+`</div>`;
+}
+
+/* ---------- events ---------- */
+document.getElementById("prevM").onclick=()=>{S.month=shiftMonth(S.month,-1);S.open=null;watchMonth()};
+document.getElementById("nextM").onclick=()=>{S.month=shiftMonth(S.month,1);S.open=null;watchMonth()};
+document.querySelector(".tabs").onclick=e=>{const b=e.target.closest("[data-tab]");if(b){S.tab=b.dataset.tab;render()}};
+const view=document.getElementById("view");
+view.addEventListener("click",e=>{
+  if(e.target.closest("#altImport"))return altImport();
+  if(e.target.closest("#altStaff")){A.busy=true;render();return altLoadStaff().then(()=>{A.busy=false;altSave();render()})}
+  if(e.target.closest("#altLogout")){Object.assign(A,{userToken:"",company:"",companyName:"",companies:[],staff:"",staffName:"",staffList:[],msg:"Altegio отключён."});altSave();return render()}
+  const a=e.target.closest("[data-add]"); if(a)return addSession(a.dataset.add);
+  const o=e.target.closest("[data-open]"); if(o){S.open=S.open===o.dataset.open?null:o.dataset.open;return render()}
+  if(e.target.closest("[data-close]")){S.open=null;return render()}
+  const d=e.target.closest("[data-del]"); if(d){S.data.items=S.data.items.filter(i=>i.id!==d.dataset.del);S.open=null;saveMonth();render();return toast("Сеанс удалён")}
+  const dp=e.target.closest("[data-delpay]"); if(dp){S.data.payouts=S.data.payouts.filter(p=>p.id!==dp.dataset.delpay);saveMonth();return render()}
+  const ds=e.target.closest("[data-delsvc]"); if(ds){S.settings.services=S.settings.services.filter(s=>s.id!==ds.dataset.delsvc);saveSettings();return render()}
+  if(e.target.closest("#addSvc")){S.settings.services.push({id:uid(),name:"Новая услуга",price:0,type:"pct",val:40});saveSettings();render();
+    const ins=view.querySelectorAll('[data-sf="name"]');const last=ins[ins.length-1];if(last){last.focus();last.select()}}
+});
+view.addEventListener("change",e=>{
+  const el=e.target;
+  if(el.id==="addDate"){S.addDate=el.value;return}
+  if(el.id==="a-company"){A.company=el.value.trim();const c=A.companies.find(x=>x.id===A.company);A.companyName=c?c.name:"";A.staff="";A.staffList=[];altSave();
+    if(A.company){A.busy=true;render();altLoadStaff().then(()=>{A.busy=false;altSave();render()})}else render();return}
+  if(el.id==="a-staff"){A.staff=el.value.trim();const s=A.staffList.find(x=>x.id===A.staff);A.staffName=s?s.name:"";altSave();return render()}
+  if(el.id==="a-pct"){A.defPct=Number(el.value)||0;return altSave()}
+  if(el.id==="a-came"){A.onlyCame=el.checked;return altSave()}
+  if(el.dataset.f){
+    const it=S.data.items.find(i=>i.id===el.closest("[data-edit]").dataset.edit); if(!it)return;
+    const f=el.dataset.f; it[f]=(f==="price"||f==="tip"||f==="val")?(Number(el.value)||0):el.value;
+    saveMonth(); render(); return;
+  }
+  if(el.dataset.sf){
+    const s=S.settings.services.find(x=>x.id===el.closest("[data-svc]").dataset.svc); if(!s)return;
+    const f=el.dataset.sf; s[f]=(f==="price"||f==="val")?(Number(el.value)||0):el.value;
+    saveSettings(); if(f==="type")render(); return;
+  }
+});
+view.addEventListener("submit",e=>{
+  if(e.target.id==="altLoginForm"){e.preventDefault();return altLogin()}
+  if(e.target.id!=="payForm")return; e.preventDefault();
+  const amount=Number(document.getElementById("p-amount").value)||0; if(amount<=0)return;
+  const date=document.getElementById("p-date").value||todayStr();
+  const note=document.getElementById("p-note").value.trim();
+  S.data.payouts.push({id:uid(),date,amount,note}); saveMonth(); render(); toast("Выплата записана");
+});
+init();
+})();
+</script>
+
+</body></html>
