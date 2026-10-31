@@ -73,11 +73,11 @@ h2{font-family:var(--display);font-weight:500;font-size:14px;margin:0;text-wrap:
 .btn[disabled]{opacity:.6;cursor:default}
 .btn.danger{color:var(--warn);border-color:transparent;background:transparent;padding-inline:4px}
 .empty{border:1px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:14px}
-.svc{display:grid;grid-template-columns:1fr 90px 70px 64px 32px;gap:6px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}
+.svc{display:grid;grid-template-columns:1fr 80px 116px 80px 32px;gap:6px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}
 .svc:first-child{border-top:0}
 .field{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted);min-width:0}
 .svc .x{width:32px;height:34px;border:0;background:transparent;color:var(--warn);font-size:18px}
-@media (max-width:420px){.svc{grid-template-columns:1fr 1fr 32px}.svc .f-name{grid-column:1/3}.svc .x{grid-row:1;grid-column:3}}
+@media (max-width:420px){.svc{grid-template-columns:1fr 1.3fr 1fr 32px}.svc .f-name{grid-column:1/4}.svc .x{grid-row:1;grid-column:4}}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 12px}
 .pay-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
 .pay-form .full{grid-column:1/-1}
@@ -215,11 +215,41 @@ function staffList(){
 }
 function staffName(id){if(id==="all")return "Все сотрудники";const s=staffList().find(x=>x.id===id);return s?s.name:"Сотрудник "+id}
 function staffPct(id){const s=(S.settings.staff||[]).find(x=>x.id===id);return s&&s.pct!==""&&s.pct!=null?Number(s.pct):null}
-function rateFor(stId,svcName,fallback){
+function nm(s){return String(s||"").trim().toLowerCase().replace(/\s+/g," ")}
+function svcByName(name){return S.settings.services.find(x=>nm(x.name)===nm(name))}
+function svcHasRate(s){return s&&s.type!=="auto"&&s.val!==""&&s.val!=null}
+/* Порядок: ставка услуги (если задана) → процент мастера → процент по умолчанию */
+function rateFor(stId,svcName){
+  const local=svcByName(svcName);
+  if(svcHasRate(local))return {type:local.type,val:Number(local.val)||0};
   const p=staffPct(stId); if(p!=null)return {type:"pct",val:p};
-  const local=S.settings.services.find(x=>x.name.trim().toLowerCase()===String(svcName||"").trim().toLowerCase());
-  if(local)return {type:local.type,val:Number(local.val)||0};
-  return fallback||{type:"pct",val:Number(A.defPct)||0};
+  return {type:"pct",val:Number(A.defPct)||0};
+}
+/* Добавить в «Услуги» все названия, которые встречаются в сеансах (например, из Altegio) */
+function syncServiceNames(){
+  let changed=false;
+  allItems().forEach(i=>{if(i.svc&&!svcByName(i.svc)){S.settings.services.push({id:uid(),name:i.svc,price:Number(i.price)||0,type:"auto",val:""});changed=true}});
+  if(changed)saveSettings();
+}
+async function loadAllMonths(){
+  try{
+    if(S.mode==="cloud"){
+      const snap=await S.db.collection("data/users/"+S.uid).get();
+      snap.docs.forEach(d=>{if(d.id.startsWith("m-")&&!S.cache[d.id.slice(2)])S.cache[d.id.slice(2)]=norm(d.data())});
+    } else {
+      const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("mp:m-"))keys.push(k.slice(5))}
+      await Promise.all(keys.map(ensureMonth));
+    }
+  }catch(e){}
+}
+/* Применить ставку услуги ко всем сеансам с таким же названием, за все месяцы */
+async function applyService(s){
+  await loadAllMonths();
+  const touched=new Set();let n=0;
+  for(const k in S.cache){S.cache[k].items.forEach(i=>{if(nm(i.svc)!==nm(s.name))return;n++;const r=rateFor(stOf(i),i.svc);if(r.type!==i.type||Number(r.val)!==Number(i.val)){i.type=r.type;i.val=r.val;touched.add(k)}})}
+  touched.forEach(saveMonth);
+  toast(n?"«"+s.name+"»: применено к "+n+" сеанс.":"Ставка сохранена, сеансов «"+s.name+"» пока нет");
+  render();
 }
 function mergeStaff(arr){
   let changed=false; S.settings.staff=S.settings.staff||[];
@@ -280,6 +310,7 @@ async function init(){
   }
   if(!staffList().some(s=>s.id===S.staff)&&S.staff!=="all")S.staff="me";
   await loadPeriod();
+  syncServiceNames();
 }
 
 /* ================= actions ================= */
@@ -288,7 +319,7 @@ async function addSession(svcId){
   const sv=S.settings.services.find(s=>s.id===svcId); if(!sv)return;
   const date=S.addDate||todayStr(), k=date.slice(0,7);
   await ensureMonth(k);
-  const r=rateFor(S.staff,sv.name,{type:sv.type,val:Number(sv.val)||0});
+  const r=rateFor(S.staff,sv.name);
   S.cache[k].items.push({id:uid(),date,svc:sv.name,price:Number(sv.price)||0,type:r.type,val:r.val,tip:0,note:"",st:S.staff,stn:S.staff==="me"?"":staffName(S.staff)});
   saveMonth(k); render();
   const b=document.querySelector('[data-add="'+svcId+'"]'); if(b){b.classList.add("flash");setTimeout(()=>b.classList.remove("flash"),350)}
@@ -337,7 +368,7 @@ function renderLog(){
     h+=`<div class="section">
     <div class="row-h"><h2>Сеанс для: ${esc(staffName(S.staff))}</h2>
       <label class="datepick">дата <input type="date" id="addDate" value="${S.addDate}"></label></div>
-    ${svcs.length?`<div class="pads">${svcs.map(s=>{const r=rateFor(S.staff,s.name,{type:s.type,val:s.val});const o={price:s.price,type:r.type,val:r.val};return `<button class="pad" data-add="${s.id}">
+    ${svcs.length?`<div class="pads">${svcs.map(s=>{const r=rateFor(S.staff,s.name);const o={price:s.price,type:r.type,val:r.val};return `<button class="pad" data-add="${s.id}">
       <span class="n">${esc(s.name)}</span><span class="p num">${money(s.price)} · ${rateText(o)}</span>
       <span class="e num">+${money(earnOf(o))}</span></button>`}).join("")}</div>`
       :`<div class="empty">Добавьте услуги во вкладке «Услуги»</div>`}
@@ -388,14 +419,15 @@ function renderPay(t){
 }
 function renderSvc(){
   return `<div class="section">
-    <h2>Услуги и ставки</h2>
-    <p class="hint">Цены и проценты для ручного добавления сеансов. Если у сотрудника во вкладке Altegio указан свой процент, он важнее процента услуги. Изменения касаются только новых сеансов.</p>
-    <div class="card">${S.settings.services.map(s=>`<div class="svc" data-svc="${s.id}">
+    <h2>Услуги и оплата мастеру</h2>
+    <p class="hint">Задайте, сколько мастер получает за услугу: сумму в гривнах или процент. Ставка сразу применяется ко всем сеансам с таким же названием, за все месяцы и у всех мастеров. «По % мастера» значит, что берётся процент сотрудника из вкладки Altegio.</p>
+    <div class="card">${S.settings.services.map(s=>{const t=(s.type==="fixed"||s.type==="pct")?s.type:"auto";return `<div class="svc" data-svc="${s.id}">
       <label class="field f-name">Услуга<input id="n-${s.id}" type="text" data-sf="name" value="${esc(s.name)}"></label>
       <label class="field">Цена, ₴<input id="p-${s.id}" type="number" inputmode="numeric" min="0" data-sf="price" value="${s.price}"></label>
-      <label class="field">Платят<select id="t-${s.id}" data-sf="type"><option value="pct"${s.type!=="fixed"?" selected":""}>%</option><option value="fixed"${s.type==="fixed"?" selected":""}>₴</option></select></label>
-      <label class="field">${s.type==="fixed"?"₴":"%"}<input id="v-${s.id}" type="number" inputmode="decimal" min="0" data-sf="val" value="${s.val}"></label>
-      <button class="x" data-delsvc="${s.id}" aria-label="Удалить услугу">✕</button></div>`).join("")}</div>
+      <label class="field">Мастеру<select id="t-${s.id}" data-sf="type"><option value="fixed"${t==="fixed"?" selected":""}>₴</option><option value="pct"${t==="pct"?" selected":""}>%</option><option value="auto"${t==="auto"?" selected":""}>по % мастера</option></select></label>
+      <label class="field">${t==="fixed"?"₴ за услугу":t==="pct"?"%":"—"}<input id="v-${s.id}" type="number" inputmode="decimal" min="0" data-sf="val" value="${t==="auto"?"":esc(s.val)}"${t==="auto"?" disabled":""}></label>
+      <button class="x" data-delsvc="${s.id}" aria-label="Удалить услугу">✕</button></div>`}).join("")}</div>
+    ${altReady()?`<button class="btn primary" id="altSvc"${A.busy?" disabled":""}>${A.busy?"Загружаю услуги…":"Синхронизировать услуги с Altegio"}</button>`:`<p class="hint">Чтобы подтянуть услуги и цены из Altegio, сначала подключитесь во вкладке Altegio.</p>`}
     <button class="btn" id="addSvc">+ Добавить услугу</button>
   </div>`;
 }
@@ -452,6 +484,30 @@ async function altLoadStaff(){
     A.msg="Сотрудников в списке: "+arr.length+".";
   }catch(e){A.msg="Не удалось получить список сотрудников: "+e.message}
 }
+/* Список услуг салона: названия и цены. Ставки мастера не трогаем. */
+async function altLoadServices(){
+  if(!altReady()||A.busy)return;
+  A.busy=true;render();
+  try{
+    const c=encodeURIComponent(A.company);
+    let list=null,lastErr=null;
+    for(const [path,user] of [["/company/"+c+"/services",true],["/services/"+c,true],["/book_services/"+c,false]]){
+      try{const j=await aCall("GET",path,null,user);const d=j.data;list=Array.isArray(d)?d:(d&&Array.isArray(d.services)?d.services:null);if(list)break}catch(e){lastErr=e}
+    }
+    if(!list)throw lastErr||new Error("Altegio не вернул список услуг.");
+    let added=0,updated=0;
+    list.forEach(x=>{
+      const title=x.title||x.name; if(!title)return;
+      const price=Number(x.price_min!=null?x.price_min:(x.price!=null?x.price:x.cost))||0;
+      const ex=svcByName(title);
+      if(!ex){S.settings.services.push({id:uid(),name:title,price,type:"auto",val:""});added++}
+      else if(price&&Number(ex.price)!==price){ex.price=price;updated++}
+    });
+    saveSettings();
+    toast("Услуг из Altegio: "+list.length+". Новых: "+added+", цена обновлена: "+updated);
+  }catch(e){toast("Не получилось загрузить услуги");A.msg=e.message;S.tab="alt"}
+  A.busy=false;render();
+}
 async function altImport(){
   if(!altReady()||A.busy)return;
   const from=S.from,to=S.to;
@@ -484,6 +540,7 @@ async function altImport(){
       });
     });
     mergeStaff(seen.filter(s=>s.name));
+    syncServiceNames();
     touched.forEach(saveMonth);
     toast(added?("Добавлено сеансов: "+added):"Новых сеансов нет");
     A.msg="Загрузка за "+periodText()+": добавлено "+added+(A.onlyCame&&skipped?", пропущено записей без отметки «пришёл»: "+skipped:"")+".";
@@ -538,11 +595,12 @@ document.getElementById("to").addEventListener("change",e=>{if(!e.target.value)r
 document.getElementById("prevP").onclick=()=>{shiftPeriod(-1);savePrefs();S.open=null;loadPeriod()};
 document.getElementById("nextP").onclick=()=>{shiftPeriod(1);savePrefs();S.open=null;loadPeriod()};
 document.getElementById("staffSel").addEventListener("change",e=>{S.staff=e.target.value;S.open=null;savePrefs();render()});
-document.querySelector(".tabs").onclick=e=>{const b=e.target.closest("[data-tab]");if(b){S.tab=b.dataset.tab;render()}};
+document.querySelector(".tabs").onclick=e=>{const b=e.target.closest("[data-tab]");if(b){S.tab=b.dataset.tab;if(S.tab==="svc")syncServiceNames();render()}};
 const view=document.getElementById("view");
 view.addEventListener("click",e=>{
   if(e.target.closest("#altImport"))return altImport();
   if(e.target.closest("#altReapply"))return reapplyRates();
+  if(e.target.closest("#altSvc"))return altLoadServices();
   if(e.target.closest("#altStaff")){A.busy=true;render();return altLoadStaff().then(()=>{A.busy=false;altSave();render()})}
   if(e.target.closest("#altLogout")){Object.assign(A,{userToken:"",company:"",companyName:"",companies:[],msg:"Altegio отключён."});altSave();return render()}
   const a=e.target.closest("[data-add]"); if(a)return addSession(a.dataset.add);
@@ -579,8 +637,14 @@ view.addEventListener("change",async e=>{
   }
   if(el.dataset.sf){
     const s=S.settings.services.find(x=>x.id===el.closest("[data-svc]").dataset.svc); if(!s)return;
-    const f=el.dataset.sf; s[f]=(f==="price"||f==="val")?(Number(el.value)||0):el.value;
-    saveSettings(); if(f==="type")render(); return;
+    const f=el.dataset.sf;
+    if(f==="val"){s.val=el.value===""?"":(Number(el.value)||0)}
+    else if(f==="price"){s.price=Number(el.value)||0}
+    else if(f==="type"){s.type=el.value;if(s.type==="auto")s.val="";else if(s.val===""||s.val==null){s.val="";saveSettings();render();const inp=document.getElementById("v-"+s.id);if(inp)inp.focus();return}}
+    else s[f]=el.value;
+    saveSettings();
+    if(f==="type"||f==="val")return applyService(s);
+    return;
   }
 });
 view.addEventListener("submit",async e=>{
