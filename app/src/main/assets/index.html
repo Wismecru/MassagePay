@@ -70,6 +70,7 @@ h2{font-family:var(--display);font-weight:500;font-size:14px;margin:0;text-wrap:
 .actions{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:500}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn[disabled]{opacity:.6;cursor:default}
 .btn.danger{color:var(--warn);border-color:transparent;background:transparent;padding-inline:4px}
 .empty{border:1px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:14px}
 .svc{display:grid;grid-template-columns:1fr 90px 70px 64px 32px;gap:6px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}
@@ -106,7 +107,8 @@ h2{font-family:var(--display);font-weight:500;font-size:14px;margin:0;text-wrap:
   <div class="tabs" role="tablist">
     <button role="tab" id="t-log" aria-selected="true" data-tab="log">Сеансы</button>
     <button role="tab" id="t-pay" aria-selected="false" data-tab="pay">Выплаты</button>
-    <button role="tab" id="t-svc" aria-selected="false" data-tab="svc">Мои услуги</button>
+    <button role="tab" id="t-svc" aria-selected="false" data-tab="svc">Услуги</button>
+    <button role="tab" id="t-alt" aria-selected="false" data-tab="alt">Altegio</button>
   </div>
 
   <div id="view"></div>
@@ -222,7 +224,8 @@ function render(){
   const v=document.getElementById("view");
   if(S.tab==="log")v.innerHTML=renderLog();
   else if(S.tab==="pay")v.innerHTML=renderPay(t);
-  else v.innerHTML=renderSvc();
+  else if(S.tab==="svc")v.innerHTML=renderSvc();
+  else v.innerHTML=renderAlt();
 }
 function renderLog(){
   const [lo,hi]=monthBounds(S.month);
@@ -237,6 +240,7 @@ function renderLog(){
       :`<div class="empty">Добавьте свои услуги во вкладке «Мои услуги»</div>`}
   </div>`;
   const items=S.data.items.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  if(altReady())h+=`<div class="section" style="margin-top:16px"><button class="btn primary" id="altImport"${A.busy?" disabled":""}>${A.busy?"Загружаю из Altegio…":"Загрузить сеансы из Altegio за "+monthTitle(S.month)}</button></div>`;
   h+=`<div class="section" style="margin-top:20px"><h2>Журнал</h2>`;
   if(!items.length){h+=`<div class="empty">В этом месяце сеансов пока нет.<br>Нажмите на услугу выше, и сеанс появится здесь.</div>`}
   const days={};items.forEach(i=>(days[i.date]=days[i.date]||[]).push(i));
@@ -293,12 +297,125 @@ function renderSvc(){
   </div>`;
 }
 
+/* ---------- Altegio ---------- */
+/* Ключи и токен хранятся только на этом устройстве (localStorage), в облако не уходят. Пароль не сохраняется. */
+const A_BASE="https://api.alteg.io/api/v1";
+const A=Object.assign({partner:"",login:"",userToken:"",company:"",companyName:"",companies:[],staff:"",staffName:"",staffList:[],defPct:40,onlyCame:true},lsGet("mp:altegio",{}));
+A.busy=false;A.msg="";
+function altSave(){const {busy,msg,...rest}=A;lsSet("mp:altegio",rest)}
+function altReady(){return !!(A.partner&&A.userToken&&A.company&&A.staff)}
+const isApp=!!(window.Native&&window.Native.request);
+const pending={};
+window.__nativeCb=function(id,status,body){const p=pending[id];if(p){delete pending[id];p({status:status,body:body})}};
+function httpReq(method,url,headers,body){
+  if(isApp)return new Promise(res=>{const id=uid();pending[id]=res;window.Native.request(id,JSON.stringify({method,url,headers,body:body||null}))});
+  return fetch(url,{method,headers,body:body||undefined}).then(async r=>({status:r.status,body:await r.text()})).catch(e=>({status:0,body:String(e)}));
+}
+async function aCall(method,path,body,withUser){
+  let auth="Bearer "+A.partner.trim(); if(withUser)auth+=", User "+A.userToken;
+  const r=await httpReq(method,A_BASE+path,{"Accept":"application/vnd.api.v2+json","Content-Type":"application/json","Authorization":auth},body?JSON.stringify(body):null);
+  let j=null; try{j=JSON.parse(r.body)}catch(e){}
+  if(r.status===0)throw new Error(isApp?"Нет связи с Altegio. Проверьте интернет.":"Загрузка из Altegio работает только в приложении на телефоне.");
+  if(r.status===401||r.status===403)throw new Error("Altegio отказал в доступе ("+r.status+"). Проверьте API-ключ или войдите заново."+(j&&j.meta&&j.meta.message?" Ответ: "+j.meta.message:""));
+  if(r.status>=400||(j&&j.success===false))throw new Error((j&&j.meta&&j.meta.message)||(j&&j.message)||("Ошибка Altegio "+r.status));
+  return j||{};
+}
+async function altLogin(){
+  const partner=document.getElementById("a-partner").value.trim();
+  const login=document.getElementById("a-login").value.trim();
+  const pass=document.getElementById("a-pass").value;
+  if(!partner||!login||!pass){A.msg="Заполните API-ключ, логин и пароль.";return render()}
+  A.partner=partner;A.login=login;A.busy=true;A.msg="";render();
+  try{
+    const j=await aCall("POST","/auth",{login,password:pass},false);
+    const tok=j.data&&(j.data.user_token||j.data.token);
+    if(!tok)throw new Error("Altegio не вернул токен. Проверьте логин и пароль.");
+    A.userToken=tok;
+    try{
+      const c=await aCall("GET","/companies?my=1",null,true);
+      A.companies=(Array.isArray(c.data)?c.data:[]).map(x=>({id:String(x.id),name:x.title||x.public_title||("Салон "+x.id)}));
+      if(A.companies.length===1){A.company=A.companies[0].id;A.companyName=A.companies[0].name;await altLoadStaff()}
+    }catch(e){A.companies=[]}
+    A.msg="Вход выполнен.";
+  }catch(e){A.msg=e.message}
+  A.busy=false;altSave();render();
+}
+async function altLoadStaff(){
+  if(!A.company)return;
+  try{
+    let j; try{j=await aCall("GET","/company/"+encodeURIComponent(A.company)+"/staff",null,true)}catch(e){j=await aCall("GET","/book_staff/"+encodeURIComponent(A.company),null,false)}
+    A.staffList=(Array.isArray(j.data)?j.data:[]).map(x=>({id:String(x.id),name:x.name||("Сотрудник "+x.id)}));
+  }catch(e){A.staffList=[];A.msg="Не удалось получить список сотрудников: "+e.message+" Впишите свой ID вручную."}
+}
+async function altImport(){
+  if(!altReady()||A.busy)return;
+  const [lo,hi]=monthBounds(S.month);
+  A.busy=true;render();
+  try{
+    let all=[];
+    for(let p=1;p<=25;p++){
+      const j=await aCall("GET","/records/"+encodeURIComponent(A.company)+"?staff_id="+encodeURIComponent(A.staff)+"&start_date="+lo+"&end_date="+hi+"&count=200&page="+p,null,true);
+      const d=Array.isArray(j.data)?j.data:[]; all=all.concat(d); if(d.length<200)break;
+    }
+    const have=new Set(S.data.items.map(i=>i.alt).filter(Boolean));
+    let added=0,skipped=0;
+    all.forEach(rec=>{
+      if(rec.deleted){return}
+      if(A.onlyCame&&Number(rec.attendance)!==1){skipped++;return}
+      if(rec.staff_id&&String(rec.staff_id)!==String(A.staff))return;
+      const date=String(rec.date||rec.datetime||"").slice(0,10); if(date<lo||date>hi)return;
+      (rec.services||[]).forEach(sv=>{
+        const key="a"+rec.id+"-"+sv.id; if(have.has(key))return;
+        const title=sv.title||"Услуга";
+        const local=S.settings.services.find(x=>x.name.trim().toLowerCase()===title.trim().toLowerCase());
+        const price=Number(sv.cost!=null?sv.cost:(sv.cost_to_pay!=null?sv.cost_to_pay:sv.first_cost))||0;
+        S.data.items.push({id:uid(),alt:key,date,svc:title,price,type:local?local.type:"pct",val:local?Number(local.val)||0:Number(A.defPct)||0,tip:0,note:"из Altegio"});
+        have.add(key);added++;
+      });
+    });
+    if(added)saveMonth();
+    toast(added?("Добавлено сеансов: "+added):"Новых сеансов нет");
+    A.msg="Последняя загрузка: добавлено "+added+(A.onlyCame&&skipped?", пропущено записей без отметки «пришёл»: "+skipped:"")+".";
+  }catch(e){A.msg=e.message;toast("Не получилось загрузить")}
+  A.busy=false;altSave();render();
+}
+function renderAlt(){
+  const connected=!!(A.partner&&A.userToken);
+  let h=`<div class="section"><h2>Загрузка сеансов из Altegio</h2>`;
+  if(!isApp)h+=`<p class="hint">Загрузка из Altegio работает в приложении для Android. В этой веб-версии настройки можно посмотреть, но связь с Altegio не установится.</p>`;
+  h+=`<p class="hint">Ключ, токен и настройки хранятся только на этом телефоне. Пароль не сохраняется, он нужен один раз для входа.</p>`;
+  if(A.msg)h+=`<p class="hint" style="color:var(--ink)"><b>${esc(A.msg)}</b></p>`;
+  if(!connected){
+    h+=`<form class="pay-form" id="altLoginForm">
+      <label class="field full">API-ключ из Marketplace Altegio<input id="a-partner" type="text" autocomplete="off" value="${esc(A.partner)}" placeholder="длинная строка из настроек аккаунта Marketplace"></label>
+      <label class="field">Логин Altegio<input id="a-login" type="text" autocomplete="username" value="${esc(A.login)}" placeholder="телефон или email"></label>
+      <label class="field">Пароль<input id="a-pass" type="password" autocomplete="current-password"></label>
+      <button class="btn primary full" type="submit"${A.busy?" disabled":""}>${A.busy?"Вхожу…":"Войти в Altegio"}</button></form>`;
+  } else {
+    h+=`<div class="card" style="padding:12px;display:flex;flex-direction:column;gap:10px">
+      <label class="field">Салон${A.companies.length?`<select id="a-company"><option value="">— выберите —</option>${A.companies.map(c=>`<option value="${esc(c.id)}"${c.id===A.company?" selected":""}>${esc(c.name)}</option>`).join("")}</select>`
+        :`<input id="a-company" type="text" inputmode="numeric" value="${esc(A.company)}" placeholder="ID салона (число)">`}</label>
+      <label class="field">Я в Altegio${A.staffList.length?`<select id="a-staff"><option value="">— выберите себя —</option>${A.staffList.map(s=>`<option value="${esc(s.id)}"${s.id===A.staff?" selected":""}>${esc(s.name)}</option>`).join("")}</select>`
+        :`<input id="a-staff" type="text" inputmode="numeric" value="${esc(A.staff)}" placeholder="ID сотрудника (число)">`}</label>
+      ${A.company&&!A.staffList.length?`<button class="btn" id="altStaff">Показать список сотрудников</button>`:""}
+      <label class="field">Мой процент для услуг, которых нет в «Услугах»<input id="a-pct" type="number" inputmode="decimal" min="0" value="${A.defPct}"></label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input id="a-came" type="checkbox"${A.onlyCame?" checked":""}> Брать только записи с отметкой «клиент пришёл»</label>
+      <p class="hint">Если услуга из Altegio называется так же, как во вкладке «Услуги», возьмётся ваш процент оттуда. Повторная загрузка не создаёт дублей.</p>
+      ${altReady()?`<button class="btn primary" id="altImport"${A.busy?" disabled":""}>${A.busy?"Загружаю…":"Загрузить сеансы за "+monthTitle(S.month)}</button>`:`<p class="hint">Выберите салон и себя, чтобы загружать сеансы.</p>`}
+      <button class="btn danger" id="altLogout" style="align-self:flex-start">Отключить Altegio</button></div>`;
+  }
+  return h+`</div>`;
+}
+
 /* ---------- events ---------- */
 document.getElementById("prevM").onclick=()=>{S.month=shiftMonth(S.month,-1);S.open=null;watchMonth()};
 document.getElementById("nextM").onclick=()=>{S.month=shiftMonth(S.month,1);S.open=null;watchMonth()};
 document.querySelector(".tabs").onclick=e=>{const b=e.target.closest("[data-tab]");if(b){S.tab=b.dataset.tab;render()}};
 const view=document.getElementById("view");
 view.addEventListener("click",e=>{
+  if(e.target.closest("#altImport"))return altImport();
+  if(e.target.closest("#altStaff")){A.busy=true;render();return altLoadStaff().then(()=>{A.busy=false;altSave();render()})}
+  if(e.target.closest("#altLogout")){Object.assign(A,{userToken:"",company:"",companyName:"",companies:[],staff:"",staffName:"",staffList:[],msg:"Altegio отключён."});altSave();return render()}
   const a=e.target.closest("[data-add]"); if(a)return addSession(a.dataset.add);
   const o=e.target.closest("[data-open]"); if(o){S.open=S.open===o.dataset.open?null:o.dataset.open;return render()}
   if(e.target.closest("[data-close]")){S.open=null;return render()}
@@ -311,6 +428,11 @@ view.addEventListener("click",e=>{
 view.addEventListener("change",e=>{
   const el=e.target;
   if(el.id==="addDate"){S.addDate=el.value;return}
+  if(el.id==="a-company"){A.company=el.value.trim();const c=A.companies.find(x=>x.id===A.company);A.companyName=c?c.name:"";A.staff="";A.staffList=[];altSave();
+    if(A.company){A.busy=true;render();altLoadStaff().then(()=>{A.busy=false;altSave();render()})}else render();return}
+  if(el.id==="a-staff"){A.staff=el.value.trim();const s=A.staffList.find(x=>x.id===A.staff);A.staffName=s?s.name:"";altSave();return render()}
+  if(el.id==="a-pct"){A.defPct=Number(el.value)||0;return altSave()}
+  if(el.id==="a-came"){A.onlyCame=el.checked;return altSave()}
   if(el.dataset.f){
     const it=S.data.items.find(i=>i.id===el.closest("[data-edit]").dataset.edit); if(!it)return;
     const f=el.dataset.f; it[f]=(f==="price"||f==="tip"||f==="val")?(Number(el.value)||0):el.value;
@@ -323,6 +445,7 @@ view.addEventListener("change",e=>{
   }
 });
 view.addEventListener("submit",e=>{
+  if(e.target.id==="altLoginForm"){e.preventDefault();return altLogin()}
   if(e.target.id!=="payForm")return; e.preventDefault();
   const amount=Number(document.getElementById("p-amount").value)||0; if(amount<=0)return;
   const date=document.getElementById("p-date").value||todayStr();
