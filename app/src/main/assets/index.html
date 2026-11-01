@@ -176,7 +176,7 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}ca
 
 /* ================= state ================= */
 const prefs=lsGet("mp:view",{});
-const S={uid:null,db:null,mode:"loading",settings:{services:DEFAULT_SERVICES.slice(),staff:[]},
+const S={uid:null,db:null,mode:"loading",settings:{services:[],staff:[],ss:{me:DEFAULT_SERVICES.map(x=>({...x}))}},
   cache:{},loadingKeys:{},preset:prefs.preset||"month",from:"",to:"",staff:prefs.staff||"me",
   tab:"log",open:null,addDate:todayStr()};
 function savePrefs(){lsSet("mp:view",{preset:S.preset,staff:S.staff,from:S.from,to:S.to})}
@@ -216,19 +216,30 @@ function staffList(){
 function staffName(id){if(id==="all")return "Все сотрудники";const s=staffList().find(x=>x.id===id);return s?s.name:"Сотрудник "+id}
 function staffPct(id){const s=(S.settings.staff||[]).find(x=>x.id===id);return s&&s.pct!==""&&s.pct!=null?Number(s.pct):null}
 function nm(s){return String(s||"").trim().toLowerCase().replace(/\s+/g," ")}
-function svcByName(name){return S.settings.services.find(x=>nm(x.name)===nm(name))}
-function svcHasRate(s){return s&&s.type!=="auto"&&s.val!==""&&s.val!=null}
-/* Порядок: ставка услуги (если задана) → процент мастера → процент по умолчанию */
+function svcHasRate(x){return !!x&&(x.type==="fixed"||x.type==="pct")&&x.val!==""&&x.val!=null}
+/* Услуги и ставки хранятся отдельно для каждого специалиста: S.settings.ss[ид мастера] = [{id,name,price,type,val}] */
+function staffSvcs(st){S.settings.ss=S.settings.ss||{};if(!S.settings.ss[st])S.settings.ss[st]=[];return S.settings.ss[st]}
+function svcOf(st,name){return staffSvcs(st).find(x=>nm(x.name)===nm(name))}
+function legacySvc(name){return (S.settings.services||[]).find(x=>nm(x.name)===nm(name))}
+/* Порядок: ставка этой услуги у этого мастера → процент мастера → процент по умолчанию */
 function rateFor(stId,svcName){
-  const local=svcByName(svcName);
-  if(svcHasRate(local))return {type:local.type,val:Number(local.val)||0};
+  const own=svcOf(stId,svcName);
+  if(svcHasRate(own))return {type:own.type,val:Number(own.val)||0};
   const p=staffPct(stId); if(p!=null)return {type:"pct",val:p};
   return {type:"pct",val:Number(A.defPct)||0};
 }
-/* Добавить в «Услуги» все названия, которые встречаются в сеансах (например, из Altegio) */
+/* Добавить услугу в список мастера, если её там нет. Старую общую ставку (если была) переносим. */
+function ensureStaffSvc(st,name,price){
+  if(!name||st==="all")return false;
+  const ex=svcOf(st,name); if(ex){if(!ex.price&&price){ex.price=price;return true}return false}
+  const old=legacySvc(name),hasOld=svcHasRate(old);
+  staffSvcs(st).push({id:uid(),name,price:Number(price)||(old?Number(old.price)||0:0),type:hasOld?old.type:"auto",val:hasOld?old.val:""});
+  return true;
+}
+/* Каждый мастер получает в свой список все услуги, которые он делал (по сеансам, в том числе из Altegio) */
 function syncServiceNames(){
   let changed=false;
-  allItems().forEach(i=>{if(i.svc&&!svcByName(i.svc)){S.settings.services.push({id:uid(),name:i.svc,price:Number(i.price)||0,type:"auto",val:""});changed=true}});
+  allItems().forEach(i=>{if(ensureStaffSvc(stOf(i),i.svc,Number(i.price)||0))changed=true});
   if(changed)saveSettings();
 }
 async function loadAllMonths(){
@@ -243,12 +254,12 @@ async function loadAllMonths(){
   }catch(e){}
 }
 /* Применить ставку услуги ко всем сеансам с таким же названием, за все месяцы */
-async function applyService(s){
+async function applyService(st,s){
   await loadAllMonths();
   const touched=new Set();let n=0;
-  for(const k in S.cache){S.cache[k].items.forEach(i=>{if(nm(i.svc)!==nm(s.name))return;n++;const r=rateFor(stOf(i),i.svc);if(r.type!==i.type||Number(r.val)!==Number(i.val)){i.type=r.type;i.val=r.val;touched.add(k)}})}
+  for(const k in S.cache){S.cache[k].items.forEach(i=>{if(stOf(i)!==st||nm(i.svc)!==nm(s.name))return;n++;const r=rateFor(stOf(i),i.svc);if(r.type!==i.type||Number(r.val)!==Number(i.val)){i.type=r.type;i.val=r.val;touched.add(k)}})}
   touched.forEach(saveMonth);
-  toast(n?"«"+s.name+"»: применено к "+n+" сеанс.":"Ставка сохранена, сеансов «"+s.name+"» пока нет");
+  toast(n?staffName(st)+" · «"+s.name+"»: применено к "+n+" сеанс.":"Ставка сохранена для "+staffName(st));
   render();
 }
 function mergeStaff(arr){
@@ -296,6 +307,11 @@ function inView(x){return x.date>=S.from&&x.date<=S.to&&(S.staff==="all"||stOf(x
 function viewItems(){const out=[];monthKeys(S.from,S.to).forEach(k=>{const m=S.cache[k];if(m)m.items.forEach(i=>{if(inView(i))out.push(i)})});return out}
 function viewPayouts(){const out=[];monthKeys(S.from,S.to).forEach(k=>{const m=S.cache[k];if(m)m.payouts.forEach(p=>{if(inView(p))out.push(p)})});return out}
 
+function normSettings(d){
+  const out={services:Array.isArray(d.services)?d.services:[],staff:Array.isArray(d.staff)?d.staff:[],ss:(d.ss&&typeof d.ss==="object")?d.ss:null};
+  if(!out.ss){out.ss={me:out.services.map(x=>({...x,id:uid()}))}}  /* прежний общий список становится списком «Я (вручную)» */
+  return out;
+}
 async function init(){
   syncControls(); render();
   let db=null,user=null;
@@ -303,10 +319,10 @@ async function init(){
   let id=null; try{ if(user) id=await user.id() }catch(e){}
   if(db&&id){
     S.db=db;S.uid=id;S.mode="cloud";
-    try{const snap=await db.doc("data/users/"+id+"/settings").get();if(snap.exists){const d=snap.data();if(d&&Array.isArray(d.services))S.settings={services:d.services.map(x=>({...x})),staff:Array.isArray(d.staff)?d.staff.map(x=>({...x})):[]}}}catch(e){}
+    try{const snap=await db.doc("data/users/"+id+"/settings").get();if(snap.exists){const d=snap.data();if(d&&Array.isArray(d.services))S.settings=normSettings(JSON.parse(JSON.stringify(d)))}}catch(e){}
   } else {
     S.mode="local";
-    const st=lsGet("mp:settings",null); if(st&&Array.isArray(st.services))S.settings={services:st.services,staff:Array.isArray(st.staff)?st.staff:[]};
+    const st=lsGet("mp:settings",null); if(st&&Array.isArray(st.services))S.settings=normSettings(st);
   }
   if(!staffList().some(s=>s.id===S.staff)&&S.staff!=="all")S.staff="me";
   await loadPeriod();
@@ -316,7 +332,7 @@ async function init(){
 /* ================= actions ================= */
 async function addSession(svcId){
   if(S.staff==="all")return;
-  const sv=S.settings.services.find(s=>s.id===svcId); if(!sv)return;
+  const sv=staffSvcs(S.staff).find(s=>s.id===svcId); if(!sv)return;
   const date=S.addDate||todayStr(), k=date.slice(0,7);
   await ensureMonth(k);
   const r=rateFor(S.staff,sv.name);
@@ -361,7 +377,7 @@ function render(){
 }
 function importBtn(){return altReady()?`<button class="btn primary" id="altImport"${A.busy?" disabled":""}>${A.busy?"Загружаю из Altegio…":"Загрузить из Altegio за "+periodText()+" (все сотрудники)"}</button>`:""}
 function renderLog(){
-  const svcs=S.settings.services; let h="";
+  const svcs=S.staff==="all"?[]:staffSvcs(S.staff); let h="";
   if(S.staff==="all"){
     h+=`<div class="section"><p class="hint">Выбран режим «Все сотрудники»: здесь сумма по всем. Чтобы добавить сеанс вручную или увидеть заработок одного человека, выберите специалиста вверху.</p>${importBtn()}</div>`;
   } else {
@@ -371,7 +387,7 @@ function renderLog(){
     ${svcs.length?`<div class="pads">${svcs.map(s=>{const r=rateFor(S.staff,s.name);const o={price:s.price,type:r.type,val:r.val};return `<button class="pad" data-add="${s.id}">
       <span class="n">${esc(s.name)}</span><span class="p num">${money(s.price)} · ${rateText(o)}</span>
       <span class="e num">+${money(earnOf(o))}</span></button>`}).join("")}</div>`
-      :`<div class="empty">Добавьте услуги во вкладке «Услуги»</div>`}
+      :`<div class="empty">У этого специалиста пока нет услуг. Они появятся после загрузки из Altegio, или добавьте их во вкладке «Услуги».</div>`}
     ${importBtn()}
     </div>`;
   }
@@ -418,17 +434,22 @@ function renderPay(t){
   return h+`<p class="hint num">Заработано ${money(t.earned)} · выплачено ${money(t.paid)} · осталось <b>${money(t.due)}</b></p></div>`;
 }
 function renderSvc(){
+  if(S.staff==="all")return `<div class="section"><h2>Услуги специалиста</h2><div class="empty">Выберите специалиста вверху: у каждого свой список процедур и своя оплата.</div></div>`;
+  const list=staffSvcs(S.staff).slice().sort((a,b)=>a.name.localeCompare(b.name,"ru"));
+  const notSet=list.filter(x=>!svcHasRate(x)).length;
   return `<div class="section">
-    <h2>Услуги и оплата мастеру</h2>
-    <p class="hint">Задайте, сколько мастер получает за услугу: сумму в гривнах или процент. Ставка сразу применяется ко всем сеансам с таким же названием, за все месяцы и у всех мастеров. «По % мастера» значит, что берётся процент сотрудника из вкладки Altegio.</p>
-    <div class="card">${S.settings.services.map(s=>{const t=(s.type==="fixed"||s.type==="pct")?s.type:"auto";return `<div class="svc" data-svc="${s.id}">
-      <label class="field f-name">Услуга<input id="n-${s.id}" type="text" data-sf="name" value="${esc(s.name)}"></label>
+    <h2>Процедуры: ${esc(staffName(S.staff))}</h2>
+    <p class="hint">Здесь только процедуры этого специалиста. Укажите один раз, сколько он получает за каждую: сумму в гривнах или процент. Ставка сохраняется за ним и применяется ко всем его сеансам этой процедуры, прошлым и будущим. На других мастеров она не влияет.</p>
+    ${notSet?`<p class="hint" style="color:var(--warn)">Без ставки: ${notSet}. Для них берётся процент мастера из вкладки Altegio или процент по умолчанию.</p>`:""}
+    ${list.length?`<div class="card">${list.map(s=>{const t=(s.type==="fixed"||s.type==="pct")?s.type:"auto";return `<div class="svc" data-svc="${s.id}">
+      <label class="field f-name">Процедура<input id="n-${s.id}" type="text" data-sf="name" value="${esc(s.name)}"></label>
       <label class="field">Цена, ₴<input id="p-${s.id}" type="number" inputmode="numeric" min="0" data-sf="price" value="${s.price}"></label>
-      <label class="field">Мастеру<select id="t-${s.id}" data-sf="type"><option value="fixed"${t==="fixed"?" selected":""}>₴</option><option value="pct"${t==="pct"?" selected":""}>%</option><option value="auto"${t==="auto"?" selected":""}>по % мастера</option></select></label>
-      <label class="field">${t==="fixed"?"₴ за услугу":t==="pct"?"%":"—"}<input id="v-${s.id}" type="number" inputmode="decimal" min="0" data-sf="val" value="${t==="auto"?"":esc(s.val)}"${t==="auto"?" disabled":""}></label>
-      <button class="x" data-delsvc="${s.id}" aria-label="Удалить услугу">✕</button></div>`}).join("")}</div>
-    ${altReady()?`<button class="btn primary" id="altSvc"${A.busy?" disabled":""}>${A.busy?"Загружаю услуги…":"Синхронизировать услуги с Altegio"}</button>`:`<p class="hint">Чтобы подтянуть услуги и цены из Altegio, сначала подключитесь во вкладке Altegio.</p>`}
-    <button class="btn" id="addSvc">+ Добавить услугу</button>
+      <label class="field">Мастеру<select id="t-${s.id}" data-sf="type"><option value="fixed"${t==="fixed"?" selected":""}>₴</option><option value="pct"${t==="pct"?" selected":""}>%</option><option value="auto"${t==="auto"?" selected":""}>не задано</option></select></label>
+      <label class="field">${t==="fixed"?"₴ за процедуру":t==="pct"?"%":"—"}<input id="v-${s.id}" type="number" inputmode="decimal" min="0" data-sf="val" value="${t==="auto"?"":esc(s.val)}"${t==="auto"?" disabled":""}></label>
+      <button class="x" data-delsvc="${s.id}" aria-label="Убрать процедуру из списка">✕</button></div>`}).join("")}</div>`
+      :`<div class="empty">Процедур пока нет. Загрузите сеансы или услуги из Altegio, либо добавьте вручную.</div>`}
+    ${altReady()&&S.staff!=="me"?`<button class="btn primary" id="altSvc"${A.busy?" disabled":""}>${A.busy?"Загружаю…":"Загрузить процедуры этого мастера из Altegio"}</button>`:""}
+    <button class="btn" id="addSvc">+ Добавить процедуру</button>
   </div>`;
 }
 
@@ -484,28 +505,29 @@ async function altLoadStaff(){
     A.msg="Сотрудников в списке: "+arr.length+".";
   }catch(e){A.msg="Не удалось получить список сотрудников: "+e.message}
 }
-/* Список услуг салона: названия и цены. Ставки мастера не трогаем. */
+/* Процедуры, которые выполняет выбранный мастер: названия и цены. Ставки не трогаем. */
 async function altLoadServices(){
-  if(!altReady()||A.busy)return;
+  if(!altReady()||A.busy||S.staff==="all"||S.staff==="me")return;
+  const st=S.staff;
   A.busy=true;render();
   try{
-    const c=encodeURIComponent(A.company);
+    const c=encodeURIComponent(A.company),q="staff_id="+encodeURIComponent(st);
     let list=null,lastErr=null;
-    for(const [path,user] of [["/company/"+c+"/services",true],["/services/"+c,true],["/book_services/"+c,false]]){
+    for(const [path,user] of [["/book_services/"+c+"?"+q,false],["/company/"+c+"/services?"+q,true]]){
       try{const j=await aCall("GET",path,null,user);const d=j.data;list=Array.isArray(d)?d:(d&&Array.isArray(d.services)?d.services:null);if(list)break}catch(e){lastErr=e}
     }
-    if(!list)throw lastErr||new Error("Altegio не вернул список услуг.");
+    if(!list)throw lastErr||new Error("Altegio не вернул список процедур мастера.");
     let added=0,updated=0;
     list.forEach(x=>{
       const title=x.title||x.name; if(!title)return;
       const price=Number(x.price_min!=null?x.price_min:(x.price!=null?x.price:x.cost))||0;
-      const ex=svcByName(title);
-      if(!ex){S.settings.services.push({id:uid(),name:title,price,type:"auto",val:""});added++}
+      const ex=svcOf(st,title);
+      if(!ex){ensureStaffSvc(st,title,price);added++}
       else if(price&&Number(ex.price)!==price){ex.price=price;updated++}
     });
     saveSettings();
-    toast("Услуг из Altegio: "+list.length+". Новых: "+added+", цена обновлена: "+updated);
-  }catch(e){toast("Не получилось загрузить услуги");A.msg=e.message;S.tab="alt"}
+    toast(staffName(st)+": процедур в Altegio "+list.length+", новых "+added+(updated?", цена обновлена у "+updated:""));
+  }catch(e){toast("Не получилось загрузить процедуры");A.msg=e.message;S.tab="alt"}
   A.busy=false;render();
 }
 async function altImport(){
@@ -533,6 +555,7 @@ async function altImport(){
         const key="a"+rec.id+"-"+sv.id; if(have.has(key))return;
         const title=sv.title||"Услуга";
         const price=Number(sv.cost!=null?sv.cost:(sv.cost_to_pay!=null?sv.cost_to_pay:sv.first_cost))||0;
+        ensureStaffSvc(st,title,price);
         const r=rateFor(st,title);
         const k=date.slice(0,7);
         S.cache[k].items.push({id:uid(),alt:key,date,svc:title,price,type:r.type,val:r.val,tip:0,note:"",st,stn});
@@ -541,6 +564,7 @@ async function altImport(){
     });
     mergeStaff(seen.filter(s=>s.name));
     syncServiceNames();
+    saveSettings();
     touched.forEach(saveMonth);
     toast(added?("Добавлено сеансов: "+added):"Новых сеансов нет");
     A.msg="Загрузка за "+periodText()+": добавлено "+added+(A.onlyCame&&skipped?", пропущено записей без отметки «пришёл»: "+skipped:"")+".";
@@ -573,11 +597,11 @@ function renderAlt(){
     <label class="field">Салон${A.companies.length?`<select id="a-company"><option value="">— выберите —</option>${A.companies.map(c=>`<option value="${esc(c.id)}"${c.id===A.company?" selected":""}>${esc(c.name)}</option>`).join("")}</select>`
       :`<input id="a-company" type="text" inputmode="numeric" value="${esc(A.company)}" placeholder="ID салона (число)">`}</label>
     <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input id="a-came" type="checkbox"${A.onlyCame?" checked":""}> Брать только записи с отметкой «клиент пришёл»</label>
-    <label class="field">Процент по умолчанию (если у сотрудника и услуги ставки нет)<input id="a-pct" type="number" inputmode="decimal" min="0" value="${A.defPct}"></label>
+    <label class="field">Процент по умолчанию (если ни у процедуры, ни у мастера ставки нет)<input id="a-pct" type="number" inputmode="decimal" min="0" value="${A.defPct}"></label>
     ${importBtn()}
   </div>
   <h2 style="margin-top:8px">Сотрудники и их процент</h2>
-  <p class="hint">Укажите процент каждого мастера от стоимости услуги. Пустое поле: процент берётся из вкладки «Услуги» по названию услуги, а если там её нет, то процент по умолчанию.</p>
+  <p class="hint">Запасной процент мастера: он применяется только к процедурам, у которых во вкладке «Услуги» не задана своя ставка. Если у всех процедур ставки заданы, это поле можно оставить пустым.</p>
   ${staff.length?`<div class="card">${staff.map(s=>`<div class="staff-row" data-stf="${esc(s.id)}"><span>${esc(s.name)}</span><input id="sp-${esc(s.id)}" type="number" inputmode="decimal" min="0" placeholder="%" aria-label="Процент: ${esc(s.name)}" value="${esc(s.pct)}"></div>`).join("")}</div>`
     :`<div class="empty">Список сотрудников пуст. Нажмите «Обновить список» или загрузите сеансы.</div>`}
   <div class="ctl-row">
@@ -608,8 +632,8 @@ view.addEventListener("click",e=>{
   if(e.target.closest("[data-close]")){S.open=null;return render()}
   const d=e.target.closest("[data-del]"); if(d){const f=findItem(d.dataset.del);if(f){S.cache[f.k].items=S.cache[f.k].items.filter(i=>i.id!==f.i.id);saveMonth(f.k)}S.open=null;render();return toast("Сеанс удалён")}
   const dp=e.target.closest("[data-delpay]"); if(dp){for(const k in S.cache){const m=S.cache[k];const n=m.payouts.length;m.payouts=m.payouts.filter(p=>p.id!==dp.dataset.delpay);if(m.payouts.length!==n){saveMonth(k);break}}return render()}
-  const ds_=e.target.closest("[data-delsvc]"); if(ds_){S.settings.services=S.settings.services.filter(s=>s.id!==ds_.dataset.delsvc);saveSettings();return render()}
-  if(e.target.closest("#addSvc")){S.settings.services.push({id:uid(),name:"Новая услуга",price:0,type:"pct",val:40});saveSettings();render();
+  const ds_=e.target.closest("[data-delsvc]"); if(ds_&&S.staff!=="all"){S.settings.ss[S.staff]=staffSvcs(S.staff).filter(s=>s.id!==ds_.dataset.delsvc);saveSettings();return render()}
+  if(e.target.closest("#addSvc")&&S.staff!=="all"){staffSvcs(S.staff).push({id:uid(),name:"Новая процедура",price:0,type:"fixed",val:""});saveSettings();render();
     const ins=view.querySelectorAll('[data-sf="name"]');const last=ins[ins.length-1];if(last){last.focus();last.select()}}
 });
 view.addEventListener("change",async e=>{
@@ -636,14 +660,16 @@ view.addEventListener("change",async e=>{
     return render();
   }
   if(el.dataset.sf){
-    const s=S.settings.services.find(x=>x.id===el.closest("[data-svc]").dataset.svc); if(!s)return;
+    if(S.staff==="all")return; const st=S.staff;
+    const s=staffSvcs(st).find(x=>x.id===el.closest("[data-svc]").dataset.svc); if(!s)return;
     const f=el.dataset.sf;
     if(f==="val"){s.val=el.value===""?"":(Number(el.value)||0)}
     else if(f==="price"){s.price=Number(el.value)||0}
     else if(f==="type"){s.type=el.value;if(s.type==="auto")s.val="";else if(s.val===""||s.val==null){s.val="";saveSettings();render();const inp=document.getElementById("v-"+s.id);if(inp)inp.focus();return}}
     else s[f]=el.value;
     saveSettings();
-    if(f==="type"||f==="val")return applyService(s);
+    if(f==="type"||f==="val")return applyService(st,s);
+    if(f==="name")return applyService(st,s);
     return;
   }
 });
