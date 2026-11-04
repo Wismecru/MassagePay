@@ -1,0 +1,744 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Моя зарплата массажиста</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Layout: narrow phone column — big month total, quick-tap service pads, day-grouped journal */
+:root{
+  --bg:#eef2ef; --surface:#ffffff; --ink:#16221d; --muted:#5d6e66; --line:#d6dfd9;
+  --accent:#2c6a53; --accent-ink:#ffffff; --accent-soft:#dfece5; --warn:#a24f2a;
+  --display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1613; --surface:#17211c; --ink:#e4ede8; --muted:#90a39a; --line:#2a3832;
+  --accent:#7fc4a5; --accent-ink:#0f1613; --accent-soft:#1d3128; --warn:#e59a74; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1613; --surface:#17211c; --ink:#e4ede8; --muted:#90a39a; --line:#2a3832;
+  --accent:#7fc4a5; --accent-ink:#0f1613; --accent-soft:#1d3128; --warn:#e59a74; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.month{display:flex;align-items:center;gap:6px}
+.month b{font-family:var(--display);font-weight:500;font-size:15px;min-width:9.5em;text-align:center;text-transform:capitalize}
+.icon{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:18px;line-height:1}
+.sync{font-size:12px;color:var(--muted)}
+.hero{display:flex;flex-direction:column;gap:4px}
+.label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.big{font-family:var(--display);font-weight:700;font-size:clamp(34px,10vw,48px);line-height:1.05;letter-spacing:-.01em}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stats div{background:var(--surface);padding:10px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stats span{font-size:11px;color:var(--muted)}
+.stats strong{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats .due strong{color:var(--accent)}
+@media (max-width:340px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stats .avg strong{color:var(--accent)}
+.tabs{display:flex;gap:4px;background:var(--accent-soft);padding:4px;border-radius:999px}
+.tabs button{flex:1;border:0;background:transparent;padding:8px 6px;border-radius:999px;font-weight:500;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+h2{font-family:var(--display);font-weight:500;font-size:14px;margin:0;text-wrap:balance}
+.section{display:flex;flex-direction:column;gap:10px}
+.row-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.pads{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pad{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:4px;transition:transform .08s}
+.pad:active{transform:scale(.97)}
+.pad .n{font-weight:600;line-height:1.25}
+.pad .p{font-size:13px;color:var(--muted)}
+.pad .e{font-size:13px;color:var(--accent);font-weight:600}
+.pad.flash{border-color:var(--accent);background:var(--accent-soft)}
+.datepick{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.datepick input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 8px}
+.day{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.day-h{display:flex;justify-content:space-between;padding:8px 12px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line)}
+.day-h b{color:var(--ink);font-weight:600}
+.item{border:0;background:transparent;width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 12px;text-align:left;border-top:1px solid var(--line)}
+.day-h + .item{border-top:0}
+.item .s{font-weight:500;min-width:0}
+.item .m{font-size:13px;color:var(--muted)}
+.item .r{text-align:right;font-weight:600;color:var(--accent)}
+.edit{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:4px 12px 12px;background:var(--accent-soft)}
+.edit label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.edit input,.edit select,.field input,.field select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+.edit .full{grid-column:1/-1}
+.actions{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:500}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn[disabled]{opacity:.6;cursor:default}
+.btn.danger{color:var(--warn);border-color:transparent;background:transparent;padding-inline:4px}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:14px}
+.svc{display:grid;grid-template-columns:1fr 80px 116px 80px 32px;gap:6px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}
+.svc:first-child{border-top:0}
+.field{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted);min-width:0}
+.svc .x{width:32px;height:34px;border:0;background:transparent;color:var(--warn);font-size:18px}
+@media (max-width:420px){.svc{grid-template-columns:1fr 1.3fr 1fr 32px}.svc .f-name{grid-column:1/4}.svc .x{grid-row:1;grid-column:4}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 12px}
+.pay-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
+.pay-form .full{grid-column:1/-1}
+.pay{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.pay:first-child{border-top:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;z-index:5}
+@media (prefers-reduced-motion:reduce){.pad{transition:none}}
+.controls{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.ctl-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ctl-row select,.ctl-row input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
+.ctl-row select{flex:1}
+.ctl-row .dates{display:flex;gap:6px;align-items:center;flex:1;min-width:0;font-size:13px;color:var(--muted)}
+.ctl-row .dates input{flex:1}
+.ctl-row .icon{width:32px;height:32px;flex:none}
+.ctl-lbl{font-size:12px;color:var(--muted);width:76px;flex:none}
+.who{font-size:12px;color:var(--accent);font-weight:600}
+.staff-row{display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.staff-row:first-child{border-top:0}
+.staff-row input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 8px;width:100%}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <h2 style="font-size:15px">Учёт зарплаты</h2>
+    <span class="sync" id="sync">Загрузка…</span>
+  </div>
+
+  <div class="controls">
+    <div class="ctl-row">
+      <span class="ctl-lbl">Период</span>
+      <button class="icon" id="prevP" aria-label="Предыдущий период">‹</button>
+      <select id="preset" aria-label="Период">
+        <option value="today">Сегодня</option>
+        <option value="month">Этот месяц</option>
+        <option value="prev">Прошлый месяц</option>
+        <option value="h1">1–15 число</option>
+        <option value="h2">16 – конец месяца</option>
+        <option value="week">Эта неделя</option>
+        <option value="custom">Свои даты</option>
+      </select>
+      <button class="icon" id="nextP" aria-label="Следующий период">›</button>
+    </div>
+    <div class="ctl-row">
+      <span class="ctl-lbl"></span>
+      <span class="dates"><input type="date" id="from" aria-label="С какого числа">–<input type="date" id="to" aria-label="По какое число"></span>
+    </div>
+    <div class="ctl-row">
+      <span class="ctl-lbl">Специалист</span>
+      <select id="staffSel" aria-label="Специалист"></select>
+    </div>
+  </div>
+
+  <div class="hero">
+    <span class="label" id="heroLbl">Заработано</span>
+    <div class="big num" id="earned">0 ₴</div>
+  </div>
+
+  <div class="stats num" id="stats"></div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="t-log" aria-selected="true" data-tab="log">Сеансы</button>
+    <button role="tab" id="t-pay" aria-selected="false" data-tab="pay">Выплаты</button>
+    <button role="tab" id="t-svc" aria-selected="false" data-tab="svc">Услуги</button>
+    <button role="tab" id="t-alt" aria-selected="false" data-tab="alt">Altegio</button>
+  </div>
+
+  <div id="view"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+/* ================= helpers ================= */
+const DEFAULT_SERVICES=[
+  {id:"s1",name:"Классический массаж, 60 мин",price:800,type:"pct",val:40},
+  {id:"s2",name:"Массаж спины, 30 мин",price:500,type:"pct",val:40},
+  {id:"s3",name:"Антицеллюлитный, 60 мин",price:900,type:"pct",val:40},
+  {id:"s4",name:"Лимфодренажный, 60 мин",price:1000,type:"pct",val:40},
+  {id:"s5",name:"Массаж лица, 30 мин",price:600,type:"pct",val:40}
+];
+function pad2(n){return String(n).padStart(2,"0")}
+function ds(d){return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate())}
+function todayStr(){return ds(new Date())}
+function parseD(s){const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function lastDay(y,m){return new Date(y,m+1,0).getDate()}
+function money(n){return Math.round(n||0).toLocaleString("ru-RU")+" ₴"}
+function uid(){return Math.random().toString(36).slice(2,10)}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function earnOf(it){const base=it.type==="fixed"?Number(it.val)||0:(Number(it.price)||0)*(Number(it.val)||0)/100;return base+(Number(it.tip)||0)}
+function rateText(o){return o.type==="fixed"?money(o.val)+" за сеанс":(o.val||0)+"%"}
+function stOf(x){return x.st||"me"}
+function monthKeys(from,to){const out=[];let d=parseD(from.slice(0,7)+"-01");const end=parseD(to.slice(0,7)+"-01");while(d<=end&&out.length<60){out.push(ds(d).slice(0,7));d=new Date(d.getFullYear(),d.getMonth()+1,1)}return out}
+function fmtShort(s){return parseD(s).toLocaleDateString("ru-RU",{day:"numeric",month:"short"})}
+function periodText(){return S.from===S.to?fmtShort(S.from):fmtShort(S.from)+" – "+fmtShort(S.to)}
+function lsGet(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){toast("Память телефона для приложения заполнена");return false}}
+
+/* ================= state ================= */
+const prefs=lsGet("mp:view",{});
+const S={uid:null,db:null,mode:"loading",settings:{services:[],staff:[],ss:{me:DEFAULT_SERVICES.map(x=>({...x}))}},
+  cache:{},loadingKeys:{},preset:prefs.preset||"month",from:"",to:"",staff:prefs.staff||"me",
+  tab:"log",open:null,addDate:todayStr()};
+function savePrefs(){lsSet("mp:view",{preset:S.preset,staff:S.staff,from:S.from,to:S.to})}
+function applyPreset(p,base){
+  const t=base?parseD(base):new Date(),y=t.getFullYear(),m=t.getMonth();
+  if(p==="today"){S.from=ds(t);S.to=ds(t)}
+  else if(p==="month"){S.from=ds(new Date(y,m,1));S.to=ds(new Date(y,m,lastDay(y,m)))}
+  else if(p==="prev"){S.from=ds(new Date(y,m-1,1));S.to=ds(new Date(y,m-1,lastDay(y,m-1)))}
+  else if(p==="h1"){S.from=ds(new Date(y,m,1));S.to=ds(new Date(y,m,15))}
+  else if(p==="h2"){S.from=ds(new Date(y,m,16));S.to=ds(new Date(y,m,lastDay(y,m)))}
+  else if(p==="week"){const wd=(t.getDay()+6)%7,mon=new Date(y,m,t.getDate()-wd);S.from=ds(mon);S.to=ds(new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+6))}
+  else if(p==="custom"){if(prefs.from&&prefs.to){S.from=prefs.from;S.to=prefs.to}else applyPreset("month")}
+}
+applyPreset(S.preset);
+function shiftPeriod(dir){
+  const f=parseD(S.from),t=parseD(S.to);
+  const isMonth=f.getDate()===1&&t.getDate()===lastDay(t.getFullYear(),t.getMonth())&&f.getMonth()===t.getMonth()&&f.getFullYear()===t.getFullYear();
+  if(isMonth){const n=new Date(f.getFullYear(),f.getMonth()+dir,1);S.from=ds(n);S.to=ds(new Date(n.getFullYear(),n.getMonth(),lastDay(n.getFullYear(),n.getMonth())))}
+  else if(S.preset==="h1"||S.preset==="h2"){
+    if(S.preset==="h1"&&dir<0){const n=new Date(f.getFullYear(),f.getMonth()-1,16);S.preset="h2";S.from=ds(n);S.to=ds(new Date(n.getFullYear(),n.getMonth(),lastDay(n.getFullYear(),n.getMonth())))}
+    else if(S.preset==="h1"){S.preset="h2";S.from=ds(new Date(f.getFullYear(),f.getMonth(),16));S.to=ds(new Date(f.getFullYear(),f.getMonth(),lastDay(f.getFullYear(),f.getMonth())))}
+    else if(dir<0){S.preset="h1";S.from=ds(new Date(f.getFullYear(),f.getMonth(),1));S.to=ds(new Date(f.getFullYear(),f.getMonth(),15))}
+    else{const n=new Date(f.getFullYear(),f.getMonth()+1,1);S.preset="h1";S.from=ds(n);S.to=ds(new Date(n.getFullYear(),n.getMonth(),15))}
+    return;
+  }
+  else{const days=Math.round((t-f)/864e5)+1;S.from=ds(new Date(f.getFullYear(),f.getMonth(),f.getDate()+dir*days));S.to=ds(new Date(t.getFullYear(),t.getMonth(),t.getDate()+dir*days))}
+  if(S.preset!=="h1"&&S.preset!=="h2"&&!isMonth)S.preset="custom";
+  if(isMonth&&S.preset!=="month"&&S.preset!=="prev")S.preset="month";
+}
+
+/* ================= staff ================= */
+function staffList(){
+  const list=[{id:"me",name:"Я (вручную)"}];
+  (S.settings.staff||[]).forEach(s=>{if(!list.some(x=>x.id===s.id))list.push({id:s.id,name:s.name})});
+  Object.values(S.cache).forEach(m=>m.items.forEach(i=>{const id=stOf(i);if(!list.some(x=>x.id===id))list.push({id,name:i.stn||("Сотрудник "+id)})}));
+  return list;
+}
+function staffName(id){if(id==="all")return "Все сотрудники";const s=staffList().find(x=>x.id===id);return s?s.name:"Сотрудник "+id}
+function staffPct(id){const s=(S.settings.staff||[]).find(x=>x.id===id);return s&&s.pct!==""&&s.pct!=null?Number(s.pct):null}
+function nm(s){return String(s||"").trim().toLowerCase().replace(/\s+/g," ")}
+function svcHasRate(x){return !!x&&(x.type==="fixed"||x.type==="pct")&&x.val!==""&&x.val!=null}
+/* Услуги и ставки хранятся отдельно для каждого специалиста: S.settings.ss[ид мастера] = [{id,name,price,type,val}] */
+function staffSvcs(st){S.settings.ss=S.settings.ss||{};if(!S.settings.ss[st])S.settings.ss[st]=[];return S.settings.ss[st]}
+function svcOf(st,name){return staffSvcs(st).find(x=>nm(x.name)===nm(name))}
+function legacySvc(name){return (S.settings.services||[]).find(x=>nm(x.name)===nm(name))}
+/* Порядок: ставка этой услуги у этого мастера → процент мастера → процент по умолчанию */
+function rateFor(stId,svcName){
+  const own=svcOf(stId,svcName);
+  if(svcHasRate(own))return {type:own.type,val:Number(own.val)||0};
+  const p=staffPct(stId); if(p!=null)return {type:"pct",val:p};
+  return {type:"pct",val:Number(A.defPct)||0};
+}
+/* Добавить услугу в список мастера, если её там нет. Старую общую ставку (если была) переносим. */
+function ensureStaffSvc(st,name,price){
+  if(!name||st==="all")return false;
+  const ex=svcOf(st,name); if(ex){if(!ex.price&&price){ex.price=price;return true}return false}
+  const old=legacySvc(name),hasOld=svcHasRate(old);
+  staffSvcs(st).push({id:uid(),name,price:Number(price)||(old?Number(old.price)||0:0),type:hasOld?old.type:"auto",val:hasOld?old.val:""});
+  return true;
+}
+/* Каждый мастер получает в свой список все услуги, которые он делал (по сеансам, в том числе из Altegio) */
+function syncServiceNames(){
+  let changed=false;
+  allItems().forEach(i=>{if(ensureStaffSvc(stOf(i),i.svc,Number(i.price)||0))changed=true});
+  if(changed)saveSettings();
+}
+async function loadAllMonths(){
+  try{
+    if(S.mode==="cloud"){
+      const snap=await S.db.collection("data/users/"+S.uid).get();
+      snap.docs.forEach(d=>{if(d.id.startsWith("m-")&&!S.cache[d.id.slice(2)])S.cache[d.id.slice(2)]=norm(d.data())});
+    } else {
+      const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("mp:m-"))keys.push(k.slice(5))}
+      await Promise.all(keys.map(ensureMonth));
+    }
+  }catch(e){}
+}
+/* Применить ставку услуги ко всем сеансам с таким же названием, за все месяцы */
+async function applyService(st,s){
+  await loadAllMonths();
+  const touched=new Set();let n=0;
+  for(const k in S.cache){S.cache[k].items.forEach(i=>{if(stOf(i)!==st||nm(i.svc)!==nm(s.name))return;n++;const r=rateFor(stOf(i),i.svc);if(r.type!==i.type||Number(r.val)!==Number(i.val)){i.type=r.type;i.val=r.val;touched.add(k)}})}
+  touched.forEach(saveMonth);
+  toast(n?staffName(st)+" · «"+s.name+"»: применено к "+n+" сеанс.":"Ставка сохранена для "+staffName(st));
+  render();
+}
+function mergeStaff(arr){
+  let changed=false; S.settings.staff=S.settings.staff||[];
+  arr.forEach(s=>{const ex=S.settings.staff.find(x=>x.id===s.id);if(!ex){S.settings.staff.push({id:s.id,name:s.name,pct:""});changed=true}else if(s.name&&ex.name!==s.name){ex.name=s.name;changed=true}});
+  if(changed)saveSettings();
+}
+
+/* ================= storage ================= */
+const queues={};
+function write(docName,body){
+  if(S.mode==="cloud"&&S.db&&S.uid){
+    const ref=S.db.doc("data/users/"+S.uid+"/"+docName);
+    queues[docName]=(queues[docName]||Promise.resolve()).then(()=>ref.set(body)).catch(e=>{
+      toast(e&&e.code==="quota_exceeded"?"Место в хранилище закончилось":"Не удалось сохранить, проверьте интернет")});
+  } else lsSet("mp:"+docName,body);
+}
+function saveSettings(){write("settings",S.settings)}
+function saveMonth(k){write("m-"+k,S.cache[k])}
+function norm(d){return {items:(d&&Array.isArray(d.items))?d.items.map(x=>({...x})):[],payouts:(d&&Array.isArray(d.payouts))?d.payouts.map(x=>({...x})):[]}}
+async function ensureMonth(k){
+  if(S.cache[k])return S.cache[k];
+  if(S.loadingKeys[k])return S.loadingKeys[k];
+  const p=(async()=>{
+    let d=null;
+    if(S.mode==="cloud"){
+      const snap=await S.db.doc("data/users/"+S.uid+"/m-"+k).get();
+      d=snap.exists?snap.data():null;
+    } else d=lsGet("mp:m-"+k,null);
+    S.cache[k]=norm(d); delete S.loadingKeys[k]; return S.cache[k];
+  })();
+  S.loadingKeys[k]=p; return p;
+}
+async function loadPeriod(){
+  const keys=monthKeys(S.from,S.to);
+  if(keys.some(k=>!S.cache[k]))setSync("Загрузка…");
+  try{await Promise.all(keys.map(ensureMonth));setSyncState()}
+  catch(e){setSync("Нет связи с сервером")}
+  render();
+  autoSync(false);
+}
+function setSync(t){document.getElementById("sync").textContent=t}
+function allItems(){const out=[];Object.values(S.cache).forEach(m=>m.items.forEach(i=>out.push(i)));return out}
+function findItem(id){for(const k in S.cache){const i=S.cache[k].items.find(x=>x.id===id);if(i)return {k,i}}return null}
+function inView(x){return x.date>=S.from&&x.date<=S.to&&(S.staff==="all"||stOf(x)===S.staff)}
+function viewItems(){const out=[];monthKeys(S.from,S.to).forEach(k=>{const m=S.cache[k];if(m)m.items.forEach(i=>{if(inView(i))out.push(i)})});return out}
+function viewPayouts(){const out=[];monthKeys(S.from,S.to).forEach(k=>{const m=S.cache[k];if(m)m.payouts.forEach(p=>{if(inView(p))out.push(p)})});return out}
+
+function normSettings(d){
+  const out={services:Array.isArray(d.services)?d.services:[],staff:Array.isArray(d.staff)?d.staff:[],ss:(d.ss&&typeof d.ss==="object")?d.ss:null};
+  if(!out.ss){out.ss={me:out.services.map(x=>({...x,id:uid()}))}}  /* прежний общий список становится списком «Я (вручную)» */
+  return out;
+}
+async function init(){
+  syncControls(); render();
+  let db=null,user=null;
+  try{ if(window.claude&&window.claude.use){[db,user]=await Promise.all([window.claude.use("db"),window.claude.use("user")])} }catch(e){}
+  let id=null; try{ if(user) id=await user.id() }catch(e){}
+  if(db&&id){
+    S.db=db;S.uid=id;S.mode="cloud";
+    try{const snap=await db.doc("data/users/"+id+"/settings").get();if(snap.exists){const d=snap.data();if(d&&Array.isArray(d.services))S.settings=normSettings(JSON.parse(JSON.stringify(d)))}}catch(e){}
+  } else {
+    S.mode="local";
+    const st=lsGet("mp:settings",null); if(st&&Array.isArray(st.services))S.settings=normSettings(st);
+  }
+  if(!staffList().some(s=>s.id===S.staff)&&S.staff!=="all")S.staff="me";
+  await loadPeriod();
+  syncServiceNames();
+}
+
+/* ================= actions ================= */
+async function addSession(svcId){
+  if(S.staff==="all")return;
+  const sv=staffSvcs(S.staff).find(s=>s.id===svcId); if(!sv)return;
+  const date=S.addDate||todayStr(), k=date.slice(0,7);
+  await ensureMonth(k);
+  const r=rateFor(S.staff,sv.name);
+  S.cache[k].items.push({id:uid(),date,svc:sv.name,price:Number(sv.price)||0,type:r.type,val:r.val,tip:0,note:"",st:S.staff,stn:S.staff==="me"?"":staffName(S.staff)});
+  saveMonth(k); render();
+  const b=document.querySelector('[data-add="'+svcId+'"]'); if(b){b.classList.add("flash");setTimeout(()=>b.classList.remove("flash"),350)}
+  toast(date>=S.from&&date<=S.to?"Добавлено: "+sv.name.split(",")[0]:"Добавлено на "+fmtShort(date)+" (вне выбранного периода)");
+}
+let toastT;
+function toast(t){const el=document.getElementById("toast");el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,2200)}
+
+/* ================= render ================= */
+function syncControls(){
+  document.getElementById("preset").value=S.preset;
+  document.getElementById("from").value=S.from;
+  document.getElementById("to").value=S.to;
+  const sel=document.getElementById("staffSel"),list=staffList();
+  sel.innerHTML=list.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")+`<option value="all">Все сотрудники (сумма)</option>`;
+  sel.value=S.staff;
+}
+function totals(){
+  const items=viewItems(),pays=viewPayouts();
+  const earned=items.reduce((a,i)=>a+earnOf(i),0),kassa=items.reduce((a,i)=>a+(Number(i.price)||0),0),paid=pays.reduce((a,p)=>a+(Number(p.amount)||0),0);
+  const days=new Set(items.map(i=>i.date)).size;
+  return {count:items.length,earned,kassa,paid,due:earned-paid,days,avg:days?earned/days:0};
+}
+function render(){
+  syncControls();
+  const t=totals();
+  document.getElementById("heroLbl").textContent="Заработано · "+staffName(S.staff)+" · "+periodText();
+  document.getElementById("earned").textContent=money(t.earned);
+  document.getElementById("stats").innerHTML=
+    `<div><span>Сеансов</span><strong>${t.count}</strong></div>
+     <div><span>Рабочих дней</span><strong>${t.days}</strong></div>
+     <div class="avg"><span>Среднее в день</span><strong>${t.days?money(t.avg):"—"}</strong></div>
+     <div><span>Касса</span><strong>${money(t.kassa)}</strong></div>
+     <div><span>Выплачено</span><strong>${money(t.paid)}</strong></div>
+     <div class="due"><span>К получению</span><strong>${money(t.due)}</strong></div>`;
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
+  const v=document.getElementById("view");
+  if(S.tab==="log")v.innerHTML=renderLog();
+  else if(S.tab==="pay")v.innerHTML=renderPay(t);
+  else if(S.tab==="svc")v.innerHTML=renderSvc();
+  else v.innerHTML=renderAlt();
+}
+function importBtn(){return altReady()?`<button class="btn primary" id="altImport"${A.busy?" disabled":""}>${A.busy?"Загружаю из Altegio…":"Обновить из Altegio сейчас · "+periodText()}</button>`:""}
+function renderLog(){
+  const svcs=S.staff==="all"?[]:staffSvcs(S.staff); let h="";
+  if(S.staff==="all"){
+    h+=`<div class="section"><p class="hint">Выбран режим «Все сотрудники»: здесь сумма по всем. Чтобы добавить сеанс вручную или увидеть заработок одного человека, выберите специалиста вверху.</p>${importBtn()}</div>`;
+  } else {
+    h+=`<div class="section">
+    <div class="row-h"><h2>Сеанс для: ${esc(staffName(S.staff))}</h2>
+      <label class="datepick">дата <input type="date" id="addDate" value="${S.addDate}"></label></div>
+    ${svcs.length?`<div class="pads">${svcs.map(s=>{const r=rateFor(S.staff,s.name);const o={price:s.price,type:r.type,val:r.val};return `<button class="pad" data-add="${s.id}">
+      <span class="n">${esc(s.name)}</span><span class="p num">${money(s.price)} · ${rateText(o)}</span>
+      <span class="e num">+${money(earnOf(o))}</span></button>`}).join("")}</div>`
+      :`<div class="empty">У этого специалиста пока нет услуг. Они появятся после загрузки из Altegio, или добавьте их во вкладке «Услуги».</div>`}
+    ${importBtn()}
+    </div>`;
+  }
+  const items=viewItems().sort((a,b)=>b.date.localeCompare(a.date));
+  h+=`<div class="section" style="margin-top:20px"><h2>Журнал за ${periodText()}</h2>`;
+  if(!items.length)h+=`<div class="empty">За этот период сеансов нет.</div>`;
+  const days={};items.forEach(i=>(days[i.date]=days[i.date]||[]).push(i));
+  Object.keys(days).forEach(d=>{
+    const list=days[d],sum=list.reduce((a,i)=>a+earnOf(i),0);
+    const dl=parseD(d).toLocaleDateString("ru-RU",{weekday:"short",day:"numeric",month:"long"});
+    h+=`<div class="day"><div class="day-h"><span>${dl} · ${list.length} сеанс.</span><b class="num">${money(sum)}</b></div>`;
+    list.forEach(i=>{
+      h+=`<button class="item" data-open="${i.id}" aria-expanded="${S.open===i.id}">
+        <span class="s">${esc(i.svc)}${S.staff==="all"?` <span class="who">· ${esc(staffName(stOf(i)))}</span>`:""}</span><span class="r num">+${money(earnOf(i))}</span>
+        <span class="m num">${money(i.price)} · ${rateText(i)}${Number(i.tip)?" · чаевые "+money(i.tip):""}${i.note?" · "+esc(i.note):""}</span><span></span></button>`;
+      if(S.open===i.id)h+=`<div class="edit" data-edit="${i.id}">
+        <label>Цена, ₴<input id="e-price" type="number" inputmode="numeric" min="0" data-f="price" value="${i.price}"></label>
+        <label>Чаевые, ₴<input id="e-tip" type="number" inputmode="numeric" min="0" data-f="tip" value="${i.tip||0}"></label>
+        <label>Платят<select id="e-type" data-f="type"><option value="pct"${i.type!=="fixed"?" selected":""}>% от цены</option><option value="fixed"${i.type==="fixed"?" selected":""}>₴ за сеанс</option></select></label>
+        <label>${i.type==="fixed"?"Сумма, ₴":"Процент"}<input id="e-val" type="number" inputmode="decimal" min="0" data-f="val" value="${i.val}"></label>
+        <label>Дата<input id="e-date" type="date" data-f="date" value="${i.date}"></label>
+        <label>Заметка<input id="e-note" type="text" data-f="note" value="${esc(i.note)}" placeholder="клиент, скидка…"></label>
+        <div class="actions"><button class="btn danger" data-del="${i.id}">Удалить сеанс</button><button class="btn primary" data-close>Готово</button></div></div>`;
+    });
+    h+=`</div>`;
+  });
+  return h+`</div>`;
+}
+function renderPay(t){
+  const list=viewPayouts().sort((a,b)=>b.date.localeCompare(a.date));
+  const inRange=todayStr()>=S.from&&todayStr()<=S.to;
+  let h=`<div class="section"><h2>Выплаты · ${esc(staffName(S.staff))}</h2>`;
+  if(S.staff==="all")h+=`<p class="hint">Чтобы записать выплату, выберите специалиста вверху.</p>`;
+  else h+=`<p class="hint">Записывайте аванс и зарплату. «К получению» = заработано за период минус выплачено за период.</p>
+    <form class="pay-form" id="payForm">
+      <label class="field">Сумма, ₴<input id="p-amount" type="number" inputmode="numeric" min="1" required placeholder="2000"></label>
+      <label class="field">Дата<input id="p-date" type="date" value="${inRange?todayStr():S.to}" required></label>
+      <label class="field full">Комментарий<input id="p-note" type="text" placeholder="аванс, зарплата…"></label>
+      <button class="btn primary full" type="submit">Записать выплату</button>
+    </form>`;
+  h+=list.length?`<div class="card">${list.map(p=>`<div class="pay"><span>${fmtShort(p.date)}${S.staff==="all"?" · "+esc(staffName(stOf(p))):""}${p.note?" · "+esc(p.note):""}</span>
+      <span style="display:flex;gap:8px;align-items:center"><b class="num">${money(p.amount)}</b><button class="btn danger" data-delpay="${p.id}" aria-label="Удалить выплату">✕</button></span></div>`).join("")}</div>`
+    :`<div class="empty">За этот период выплат нет.</div>`;
+  return h+`<p class="hint num">Заработано ${money(t.earned)} · выплачено ${money(t.paid)} · осталось <b>${money(t.due)}</b></p></div>`;
+}
+function renderSvc(){
+  if(S.staff==="all")return `<div class="section"><h2>Услуги специалиста</h2><div class="empty">Выберите специалиста вверху: у каждого свой список процедур и своя оплата.</div></div>`;
+  const list=staffSvcs(S.staff).slice().sort((a,b)=>a.name.localeCompare(b.name,"ru"));
+  const notSet=list.filter(x=>!svcHasRate(x)).length;
+  return `<div class="section">
+    <h2>Процедуры: ${esc(staffName(S.staff))}</h2>
+    <p class="hint">Здесь только процедуры этого специалиста. Укажите один раз, сколько он получает за каждую: сумму в гривнах или процент. Ставка сохраняется за ним и применяется ко всем его сеансам этой процедуры, прошлым и будущим. На других мастеров она не влияет.</p>
+    ${notSet?`<p class="hint" style="color:var(--warn)">Без ставки: ${notSet}. Для них берётся процент мастера из вкладки Altegio или процент по умолчанию.</p>`:""}
+    ${list.length?`<div class="card">${list.map(s=>{const t=(s.type==="fixed"||s.type==="pct")?s.type:"auto";return `<div class="svc" data-svc="${s.id}">
+      <label class="field f-name">Процедура<input id="n-${s.id}" type="text" data-sf="name" value="${esc(s.name)}"></label>
+      <label class="field">Цена, ₴<input id="p-${s.id}" type="number" inputmode="numeric" min="0" data-sf="price" value="${s.price}"></label>
+      <label class="field">Мастеру<select id="t-${s.id}" data-sf="type"><option value="fixed"${t==="fixed"?" selected":""}>₴</option><option value="pct"${t==="pct"?" selected":""}>%</option><option value="auto"${t==="auto"?" selected":""}>не задано</option></select></label>
+      <label class="field">${t==="fixed"?"₴ за процедуру":t==="pct"?"%":"—"}<input id="v-${s.id}" type="number" inputmode="decimal" min="0" data-sf="val" value="${t==="auto"?"":esc(s.val)}"${t==="auto"?" disabled":""}></label>
+      <button class="x" data-delsvc="${s.id}" aria-label="Убрать процедуру из списка">✕</button></div>`}).join("")}</div>`
+      :`<div class="empty">Процедур пока нет. Загрузите сеансы или услуги из Altegio, либо добавьте вручную.</div>`}
+    ${altReady()&&S.staff!=="me"?`<button class="btn primary" id="altSvc"${A.busy?" disabled":""}>${A.busy?"Загружаю…":"Загрузить процедуры этого мастера из Altegio"}</button>`:""}
+    <button class="btn" id="addSvc">+ Добавить процедуру</button>
+  </div>`;
+}
+
+/* ================= Altegio ================= */
+/* Ключ и токен хранятся только на этом устройстве, в облако не уходят. Пароль не сохраняется. */
+const A_BASE="https://api.alteg.io/api/v1";
+const A=Object.assign({partner:"",login:"",userToken:"",company:"",companyName:"",companies:[],defPct:40,onlyCame:true},lsGet("mp:altegio",{}));
+A.busy=false;A.msg="";
+function altSave(){const {busy,msg,lastTime,staffList,staff,staffName,...rest}=A;lsSet("mp:altegio",rest)}
+function altReady(){return !!(A.partner&&A.userToken&&A.company)}
+const isApp=!!(window.Native&&window.Native.request);
+const pending={};
+window.__nativeCb=function(id,status,body){const p=pending[id];if(p){delete pending[id];p({status:status,body:body})}};
+function httpReq(method,url,headers,body){
+  if(isApp)return new Promise(res=>{const id=uid();pending[id]=res;window.Native.request(id,JSON.stringify({method,url,headers,body:body||null}))});
+  return fetch(url,{method,headers,body:body||undefined}).then(async r=>({status:r.status,body:await r.text()})).catch(e=>({status:0,body:String(e)}));
+}
+async function aCall(method,path,body,withUser){
+  let auth="Bearer "+A.partner.trim(); if(withUser)auth+=", User "+A.userToken;
+  const r=await httpReq(method,A_BASE+path,{"Accept":"application/vnd.api.v2+json","Content-Type":"application/json","Authorization":auth},body?JSON.stringify(body):null);
+  let j=null; try{j=JSON.parse(r.body)}catch(e){}
+  if(r.status===0)throw new Error(isApp?"Нет связи с Altegio. Проверьте интернет.":"Загрузка из Altegio работает только в приложении на телефоне.");
+  if(r.status===401||r.status===403)throw new Error("Altegio отказал в доступе ("+r.status+"). Проверьте API-ключ или войдите заново."+(j&&j.meta&&j.meta.message?" Ответ: "+j.meta.message:""));
+  if(r.status>=400||(j&&j.success===false))throw new Error((j&&j.meta&&j.meta.message)||(j&&j.message)||("Ошибка Altegio "+r.status));
+  return j||{};
+}
+async function altLogin(){
+  const partner=document.getElementById("a-partner").value.trim();
+  const login=document.getElementById("a-login").value.trim();
+  const pass=document.getElementById("a-pass").value;
+  if(!partner||!login||!pass){A.msg="Заполните API-ключ, логин и пароль.";return render()}
+  A.partner=partner;A.login=login;A.busy=true;A.msg="";render();
+  try{
+    const j=await aCall("POST","/auth",{login,password:pass},false);
+    const tok=j.data&&(j.data.user_token||j.data.token);
+    if(!tok)throw new Error("Altegio не вернул токен. Проверьте логин и пароль.");
+    A.userToken=tok;
+    try{
+      const c=await aCall("GET","/companies?my=1",null,true);
+      A.companies=(Array.isArray(c.data)?c.data:[]).map(x=>({id:String(x.id),name:x.title||x.public_title||("Салон "+x.id)}));
+      if(A.companies.length===1){A.company=A.companies[0].id;A.companyName=A.companies[0].name;await altLoadStaff()}
+    }catch(e){A.companies=[]}
+    A.msg="Вход выполнен.";
+  }catch(e){A.msg=e.message}
+  A.busy=false;altSave();render();
+}
+async function altLoadStaff(){
+  if(!A.company)return;
+  try{
+    let j; try{j=await aCall("GET","/company/"+encodeURIComponent(A.company)+"/staff",null,true)}catch(e){j=await aCall("GET","/book_staff/"+encodeURIComponent(A.company),null,false)}
+    const arr=(Array.isArray(j.data)?j.data:[]).filter(x=>!x.fired&&!x.is_fired).map(x=>({id:String(x.id),name:x.name||("Сотрудник "+x.id)}));
+    mergeStaff(arr);
+    A.msg="Сотрудников в списке: "+arr.length+".";
+  }catch(e){A.msg="Не удалось получить список сотрудников: "+e.message}
+}
+/* Процедуры, которые выполняет выбранный мастер: названия и цены. Ставки не трогаем. */
+async function altLoadServices(){
+  if(!altReady()||A.busy||S.staff==="all"||S.staff==="me")return;
+  const st=S.staff;
+  A.busy=true;render();
+  try{
+    const c=encodeURIComponent(A.company),q="staff_id="+encodeURIComponent(st);
+    let list=null,lastErr=null;
+    for(const [path,user] of [["/book_services/"+c+"?"+q,false],["/company/"+c+"/services?"+q,true]]){
+      try{const j=await aCall("GET",path,null,user);const d=j.data;list=Array.isArray(d)?d:(d&&Array.isArray(d.services)?d.services:null);if(list)break}catch(e){lastErr=e}
+    }
+    if(!list)throw lastErr||new Error("Altegio не вернул список процедур мастера.");
+    let added=0,updated=0;
+    list.forEach(x=>{
+      const title=x.title||x.name; if(!title)return;
+      const price=Number(x.price_min!=null?x.price_min:(x.price!=null?x.price:x.cost))||0;
+      const ex=svcOf(st,title);
+      if(!ex){ensureStaffSvc(st,title,price);added++}
+      else if(price&&Number(ex.price)!==price){ex.price=price;updated++}
+    });
+    saveSettings();
+    toast(staffName(st)+": процедур в Altegio "+list.length+", новых "+added+(updated?", цена обновлена у "+updated:""));
+  }catch(e){toast("Не получилось загрузить процедуры");A.msg=e.message;S.tab="alt"}
+  A.busy=false;render();
+}
+/* Загрузка/обновление сеансов всех мастеров за выбранный период.
+   silent=true — автообновление: без всплывающих сообщений, перерисовка только если что-то изменилось. */
+const lastSync={};
+async function altImport(silent){
+  if(!altReady()||A.busy)return;
+  const from=S.from,to=S.to;
+  A.busy=true; if(!silent)render(); else setSync("Обновляю из Altegio…");
+  try{
+    await Promise.all(monthKeys(from,to).map(ensureMonth));
+    let all=[];
+    for(let p=1;p<=50;p++){
+      const j=await aCall("GET","/records/"+encodeURIComponent(A.company)+"?start_date="+from+"&end_date="+to+"&count=200&page="+p,null,true);
+      const d=Array.isArray(j.data)?j.data:[]; all=all.concat(d); if(d.length<200)break;
+    }
+    const byKey={};allItems().forEach(i=>{if(i.alt)byKey[i.alt]=i});
+    const valid=new Set(),seen=[],touched=new Set();
+    let added=0,updated=0,removed=0,skipped=0;
+    all.forEach(rec=>{
+      if(rec.deleted)return;
+      if(A.onlyCame&&Number(rec.attendance)!==1){skipped++;return}
+      const date=String(rec.date||rec.datetime||"").slice(0,10); if(date<from||date>to)return;
+      const st=String(rec.staff_id!=null?rec.staff_id:(rec.staff&&rec.staff.id)||"0");
+      const stn=(rec.staff&&rec.staff.name)||"";
+      if(st!=="0"&&!seen.some(x=>x.id===st))seen.push({id:st,name:stn||""});
+      (rec.services||[]).forEach(sv=>{
+        const key="a"+rec.id+"-"+sv.id; valid.add(key);
+        const title=sv.title||"Услуга";
+        const price=Number(sv.cost!=null?sv.cost:(sv.cost_to_pay!=null?sv.cost_to_pay:sv.first_cost))||0;
+        ensureStaffSvc(st,title,price);
+        const ex=byKey[key];
+        if(ex){
+          /* запись уже есть — обновляем, если в Altegio что-то поменяли (цена, мастер, дата, услуга) */
+          let ch=false;
+          if(Number(ex.price)!==price){ex.price=price;ch=true}
+          if(ex.svc!==title){ex.svc=title;ch=true}
+          if(stOf(ex)!==st){ex.st=st;ex.stn=stn;const r=rateFor(st,title);ex.type=r.type;ex.val=r.val;ch=true}
+          if(ex.date!==date){const f=findItem(ex.id);if(f){S.cache[f.k].items=S.cache[f.k].items.filter(x=>x.id!==ex.id);touched.add(f.k)}ex.date=date;S.cache[date.slice(0,7)].items.push(ex);ch=true}
+          if(ch){touched.add(date.slice(0,7));updated++}
+          return;
+        }
+        const r=rateFor(st,title);
+        const k=date.slice(0,7);
+        const it={id:uid(),alt:key,date,svc:title,price,type:r.type,val:r.val,tip:0,note:"",st,stn};
+        S.cache[k].items.push(it);byKey[key]=it;
+        touched.add(k);added++;
+      });
+    });
+    /* сеансы из Altegio за этот период, которых там больше нет (удалены, отменены, нет отметки «пришёл») */
+    monthKeys(from,to).forEach(k=>{
+      const m=S.cache[k],n=m.items.length;
+      m.items=m.items.filter(i=>!(i.alt&&i.date>=from&&i.date<=to&&!valid.has(i.alt)));
+      if(m.items.length!==n){removed+=n-m.items.length;touched.add(k)}
+    });
+    mergeStaff(seen.filter(s=>s.name));
+    syncServiceNames();
+    saveSettings();
+    touched.forEach(saveMonth);
+    lastSync[from+"|"+to]=Date.now();
+    const tm=new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+    A.lastTime=tm;
+    const changed=added+updated+removed;
+    if(!silent||changed)toast(changed?"Altegio: новых "+added+(updated?", обновлено "+updated:"")+(removed?", убрано "+removed:""):"Новых сеансов нет");
+    A.msg="Обновлено в "+tm+" за "+periodText()+": новых "+added+", обновлено "+updated+", убрано "+removed+(A.onlyCame&&skipped?". Без отметки «пришёл» пока: "+skipped:"")+".";
+    A.busy=false;altSave();
+    if(!silent||changed)render();
+    setSyncState();
+  }catch(e){
+    A.busy=false;
+    if(silent){setSync("Altegio: нет связи")}else{A.msg=e.message;toast("Не получилось загрузить");render()}
+  }
+}
+function setSyncState(){setSync(A.lastTime&&altReady()?"Altegio: обновлено в "+A.lastTime:(S.mode==="cloud"?"Сохранено в облаке":"Сохраняется на этом устройстве"))}
+/* Автообновление: при открытии, при смене периода, при возврате в приложение и каждые 5 минут */
+function autoSync(force){
+  if(!altReady()||A.busy||A.auto===false)return;
+  const last=lastSync[S.from+"|"+S.to]||0;
+  if(!force&&Date.now()-last<120000)return;
+  if(S.from>todayStr())return;
+  altImport(true);
+}
+function tick(){
+  if(S.preset!=="custom"){const f=S.from,t=S.to;applyPreset(S.preset);if(f!==S.from||t!==S.to){loadPeriod();return}}
+  autoSync(true);
+}
+setInterval(()=>{if(!document.hidden)tick()},300000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)tick()});
+function reapplyRates(){
+  const touched=new Set();let n=0;
+  monthKeys(S.from,S.to).forEach(k=>{const m=S.cache[k];if(!m)return;m.items.forEach(i=>{if(!inView(i)||!i.alt)return;const r=rateFor(stOf(i),i.svc);if(r.type!==i.type||Number(r.val)!==Number(i.val)){i.type=r.type;i.val=r.val;touched.add(k);n++}})});
+  touched.forEach(saveMonth);
+  A.msg="Ставки пересчитаны для "+n+" сеанс. из Altegio за "+periodText()+" ("+staffName(S.staff)+").";
+  render();
+}
+function renderAlt(){
+  const connected=!!(A.partner&&A.userToken);
+  let h=`<div class="section"><h2>Altegio</h2>`;
+  if(!isApp)h+=`<p class="hint">Связь с Altegio работает в приложении для Android. В веб-версии настройки видны, но загрузка не сработает.</p>`;
+  if(A.msg)h+=`<p class="hint" style="color:var(--ink)"><b>${esc(A.msg)}</b></p>`;
+  if(!connected){
+    h+=`<p class="hint">Ключ и вход хранятся только на этом телефоне. Пароль не сохраняется.</p>
+      <form class="pay-form" id="altLoginForm">
+      <label class="field full">API-ключ из Marketplace Altegio<input id="a-partner" type="text" autocomplete="off" value="${esc(A.partner)}" placeholder="длинная строка из настроек аккаунта Marketplace"></label>
+      <label class="field">Логин Altegio<input id="a-login" type="text" autocomplete="username" value="${esc(A.login)}" placeholder="телефон или email"></label>
+      <label class="field">Пароль<input id="a-pass" type="password" autocomplete="current-password"></label>
+      <button class="btn primary full" type="submit"${A.busy?" disabled":""}>${A.busy?"Вхожу…":"Войти в Altegio"}</button></form>`;
+    return h+`</div>`;
+  }
+  const staff=S.settings.staff||[];
+  h+=`<div class="card" style="padding:12px;display:flex;flex-direction:column;gap:10px">
+    <label class="field">Салон${A.companies.length?`<select id="a-company"><option value="">— выберите —</option>${A.companies.map(c=>`<option value="${esc(c.id)}"${c.id===A.company?" selected":""}>${esc(c.name)}</option>`).join("")}</select>`
+      :`<input id="a-company" type="text" inputmode="numeric" value="${esc(A.company)}" placeholder="ID салона (число)">`}</label>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input id="a-came" type="checkbox"${A.onlyCame?" checked":""}> Брать только записи с отметкой «клиент пришёл»</label>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input id="a-auto" type="checkbox"${A.auto!==false?" checked":""}> Обновлять автоматически (при открытии и каждые 5 минут)</label>
+    <label class="field">Процент по умолчанию (если ни у процедуры, ни у мастера ставки нет)<input id="a-pct" type="number" inputmode="decimal" min="0" value="${A.defPct}"></label>
+    ${importBtn()}
+  </div>
+  <h2 style="margin-top:8px">Сотрудники и их процент</h2>
+  <p class="hint">Запасной процент мастера: он применяется только к процедурам, у которых во вкладке «Услуги» не задана своя ставка. Если у всех процедур ставки заданы, это поле можно оставить пустым.</p>
+  ${staff.length?`<div class="card">${staff.map(s=>`<div class="staff-row" data-stf="${esc(s.id)}"><span>${esc(s.name)}</span><input id="sp-${esc(s.id)}" type="number" inputmode="decimal" min="0" placeholder="%" aria-label="Процент: ${esc(s.name)}" value="${esc(s.pct)}"></div>`).join("")}</div>`
+    :`<div class="empty">Список сотрудников пуст. Нажмите «Обновить список» или загрузите сеансы.</div>`}
+  <div class="ctl-row">
+    <button class="btn" id="altStaff"${A.busy?" disabled":""}>Обновить список сотрудников</button>
+    <button class="btn" id="altReapply">Применить проценты к сеансам периода</button>
+  </div>
+  <button class="btn danger" id="altLogout" style="align-self:flex-start">Отключить Altegio</button>`;
+  return h+`</div>`;
+}
+
+/* ================= events ================= */
+document.getElementById("preset").addEventListener("change",e=>{S.preset=e.target.value;if(S.preset!=="custom")applyPreset(S.preset);savePrefs();S.open=null;loadPeriod()});
+document.getElementById("from").addEventListener("change",e=>{if(!e.target.value)return;S.from=e.target.value;if(S.to<S.from)S.to=S.from;S.preset="custom";savePrefs();loadPeriod()});
+document.getElementById("to").addEventListener("change",e=>{if(!e.target.value)return;S.to=e.target.value;if(S.from>S.to)S.from=S.to;S.preset="custom";savePrefs();loadPeriod()});
+document.getElementById("prevP").onclick=()=>{shiftPeriod(-1);savePrefs();S.open=null;loadPeriod()};
+document.getElementById("nextP").onclick=()=>{shiftPeriod(1);savePrefs();S.open=null;loadPeriod()};
+document.getElementById("staffSel").addEventListener("change",e=>{S.staff=e.target.value;S.open=null;savePrefs();render()});
+document.querySelector(".tabs").onclick=e=>{const b=e.target.closest("[data-tab]");if(b){S.tab=b.dataset.tab;if(S.tab==="svc")syncServiceNames();render()}};
+const view=document.getElementById("view");
+view.addEventListener("click",e=>{
+  if(e.target.closest("#altImport"))return altImport(false);
+  if(e.target.closest("#altReapply"))return reapplyRates();
+  if(e.target.closest("#altSvc"))return altLoadServices();
+  if(e.target.closest("#altStaff")){A.busy=true;render();return altLoadStaff().then(()=>{A.busy=false;altSave();render()})}
+  if(e.target.closest("#altLogout")){Object.assign(A,{userToken:"",company:"",companyName:"",companies:[],msg:"Altegio отключён."});altSave();return render()}
+  const a=e.target.closest("[data-add]"); if(a)return addSession(a.dataset.add);
+  const o=e.target.closest("[data-open]"); if(o){S.open=S.open===o.dataset.open?null:o.dataset.open;return render()}
+  if(e.target.closest("[data-close]")){S.open=null;return render()}
+  const d=e.target.closest("[data-del]"); if(d){const f=findItem(d.dataset.del);if(f){S.cache[f.k].items=S.cache[f.k].items.filter(i=>i.id!==f.i.id);saveMonth(f.k)}S.open=null;render();return toast("Сеанс удалён")}
+  const dp=e.target.closest("[data-delpay]"); if(dp){for(const k in S.cache){const m=S.cache[k];const n=m.payouts.length;m.payouts=m.payouts.filter(p=>p.id!==dp.dataset.delpay);if(m.payouts.length!==n){saveMonth(k);break}}return render()}
+  const ds_=e.target.closest("[data-delsvc]"); if(ds_&&S.staff!=="all"){S.settings.ss[S.staff]=staffSvcs(S.staff).filter(s=>s.id!==ds_.dataset.delsvc);saveSettings();return render()}
+  if(e.target.closest("#addSvc")&&S.staff!=="all"){staffSvcs(S.staff).push({id:uid(),name:"Новая процедура",price:0,type:"fixed",val:""});saveSettings();render();
+    const ins=view.querySelectorAll('[data-sf="name"]');const last=ins[ins.length-1];if(last){last.focus();last.select()}}
+});
+view.addEventListener("change",async e=>{
+  const el=e.target;
+  if(el.id==="addDate"){S.addDate=el.value||todayStr();return}
+  if(el.id==="a-company"){A.company=el.value.trim();const c=A.companies.find(x=>x.id===A.company);A.companyName=c?c.name:"";altSave();
+    if(A.company){A.busy=true;render();altLoadStaff().then(()=>{A.busy=false;altSave();render()})}else render();return}
+  if(el.id==="a-pct"){A.defPct=Number(el.value)||0;return altSave()}
+  if(el.id==="a-came"){A.onlyCame=el.checked;altSave();return autoSync(true)}
+  if(el.id==="a-auto"){A.auto=el.checked;altSave();return autoSync(true)}
+  const sr=el.closest("[data-stf]");
+  if(sr){const s=(S.settings.staff||[]).find(x=>x.id===sr.dataset.stf);if(s){s.pct=el.value===""?"":Number(el.value);saveSettings()}return}
+  if(el.dataset.f){
+    const f=findItem(el.closest("[data-edit]").dataset.edit); if(!f)return;
+    const fld=el.dataset.f,it=f.i;
+    if(fld==="date"){
+      if(!el.value)return;
+      const nk=el.value.slice(0,7);
+      if(nk!==f.k){await ensureMonth(nk);S.cache[f.k].items=S.cache[f.k].items.filter(x=>x.id!==it.id);it.date=el.value;S.cache[nk].items.push(it);saveMonth(f.k);saveMonth(nk)}
+      else{it.date=el.value;saveMonth(f.k)}
+    } else {
+      it[fld]=(fld==="price"||fld==="tip"||fld==="val")?(Number(el.value)||0):el.value;
+      saveMonth(f.k);
+    }
+    return render();
+  }
+  if(el.dataset.sf){
+    if(S.staff==="all")return; const st=S.staff;
+    const s=staffSvcs(st).find(x=>x.id===el.closest("[data-svc]").dataset.svc); if(!s)return;
+    const f=el.dataset.sf;
+    if(f==="val"){s.val=el.value===""?"":(Number(el.value)||0)}
+    else if(f==="price"){s.price=Number(el.value)||0}
+    else if(f==="type"){s.type=el.value;if(s.type==="auto")s.val="";else if(s.val===""||s.val==null){s.val="";saveSettings();render();const inp=document.getElementById("v-"+s.id);if(inp)inp.focus();return}}
+    else s[f]=el.value;
+    saveSettings();
+    if(f==="type"||f==="val")return applyService(st,s);
+    if(f==="name")return applyService(st,s);
+    return;
+  }
+});
+view.addEventListener("submit",async e=>{
+  if(e.target.id==="altLoginForm"){e.preventDefault();return altLogin()}
+  if(e.target.id!=="payForm")return; e.preventDefault();
+  if(S.staff==="all")return;
+  const amount=Number(document.getElementById("p-amount").value)||0; if(amount<=0)return;
+  const date=document.getElementById("p-date").value||todayStr();
+  const note=document.getElementById("p-note").value.trim();
+  const k=date.slice(0,7); await ensureMonth(k);
+  S.cache[k].payouts.push({id:uid(),date,amount,note,st:S.staff}); saveMonth(k); render(); toast("Выплата записана");
+});
+init();
+})();
+</script>
+
+</body></html>
