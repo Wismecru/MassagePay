@@ -41,7 +41,7 @@ button{cursor:pointer}
 @media (max-width:340px){.stats{grid-template-columns:repeat(2,1fr)}}
 .stats .avg strong{color:var(--accent)}
 .tabs{display:flex;gap:4px;background:var(--accent-soft);padding:4px;border-radius:999px}
-.tabs button{flex:1;border:0;background:transparent;padding:8px 6px;border-radius:999px;font-weight:500;color:var(--muted)}
+.tabs button{flex:1;min-width:0;border:0;background:transparent;padding:8px 2px;font-size:13.5px;border-radius:999px;font-weight:500;color:var(--muted)}
 .tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 h2{font-family:var(--display);font-weight:500;font-size:14px;margin:0;text-wrap:balance}
 .section{display:flex;flex-direction:column;gap:10px}
@@ -142,6 +142,7 @@ h2{font-family:var(--display);font-weight:500;font-size:14px;margin:0;text-wrap:
     <button role="tab" id="t-log" aria-selected="true" data-tab="log">Сеансы</button>
     <button role="tab" id="t-pay" aria-selected="false" data-tab="pay">Выплаты</button>
     <button role="tab" id="t-svc" aria-selected="false" data-tab="svc">Услуги</button>
+    <button role="tab" id="t-cli" aria-selected="false" data-tab="cli">Клиенты</button>
     <button role="tab" id="t-alt" aria-selected="false" data-tab="alt">Altegio</button>
   </div>
 
@@ -380,6 +381,7 @@ function render(){
   if(S.tab==="log")v.innerHTML=renderLog();
   else if(S.tab==="pay")v.innerHTML=renderPay(t);
   else if(S.tab==="svc")v.innerHTML=renderSvc();
+  else if(S.tab==="cli")v.innerHTML=renderClients();
   else v.innerHTML=renderAlt();
 }
 function importBtn(){return altReady()?`<button class="btn primary" id="altImport"${A.busy?" disabled":""}>${A.busy?"Загружаю из Altegio…":"Обновить из Altegio сейчас · "+periodText()}</button>`:""}
@@ -458,6 +460,44 @@ function renderSvc(){
     ${altReady()&&S.staff!=="me"?`<button class="btn primary" id="altSvc"${A.busy?" disabled":""}>${A.busy?"Загружаю…":"Загрузить процедуры этого мастера из Altegio"}</button>`:""}
     <button class="btn" id="addSvc">+ Добавить процедуру</button>
   </div>`;
+}
+
+/* ================= Клиенты ================= */
+/* Телефоны клиентов хранятся только в памяти этого телефона (localStorage), в облако не уходят. */
+const CL=lsGet("mp:clients",{});
+let clQuery="";
+function clSave(){lsSet("mp:clients",CL)}
+function renderClients(){
+  const st=S.staff;
+  let list=Object.keys(CL).map(id=>{
+    const c=CL[id],vs=Object.values(c.v).filter(v=>st==="all"||v.st===st);
+    if(!vs.length)return null;
+    vs.sort((a,b)=>b.d.localeCompare(a.d));
+    const days=new Set(vs.map(v=>v.d)).size;
+    const cnt={};vs.forEach(v=>cnt[v.s]=(cnt[v.s]||0)+1);
+    const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0]).join(", ");
+    return {id,n:c.n||"Без имени",p:c.p,last:vs[0].d,days,top};
+  }).filter(Boolean);
+  const q=clQuery.trim().toLowerCase(),qd=q.replace(/\D/g,"");
+  if(q)list=list.filter(c=>c.n.toLowerCase().includes(q)||(qd&&c.p.replace(/\D/g,"").includes(qd)));
+  list.sort((a,b)=>b.last.localeCompare(a.last));
+  let h=`<div class="section"><h2>Клиенты · ${esc(staffName(st))}</h2>
+    <p class="hint">Клиенты из сеансов, загруженных из Altegio. Номера хранятся только на этом телефоне. Чтобы собрать клиентов за прошлые месяцы, выберите вверху нужный период (например, свои даты за год) и нажмите кнопку ниже.</p>
+    ${altReady()?`<button class="btn primary" id="altImport"${A.busy?" disabled":""}>${A.busy?"Загружаю…":"Загрузить клиентов из Altegio · "+periodText()}</button>`:`<p class="hint">Сначала подключите Altegio во вкладке Altegio.</p>`}
+    <input id="clSearch" type="search" placeholder="Поиск по имени или номеру" value="${esc(clQuery)}" style="border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px">`;
+  if(!list.length)h+=`<div class="empty">${q?"Никого не нашлось.":"Клиентов пока нет. Они появятся после загрузки сеансов из Altegio."}</div>`;
+  else h+=`<p class="hint num">Клиентов: ${list.length}</p><div class="card">${list.slice(0,400).map(c=>`<div class="pay" style="align-items:center">
+      <span style="min-width:0;display:flex;flex-direction:column;gap:2px"><b>${esc(c.n)}</b>
+        <span class="num" style="user-select:all">${esc(c.p||"номера нет")}</span>
+        <span class="hint" style="font-size:12px">визитов ${c.days} · последний ${fmtShort(c.last)}${c.top?" · "+esc(c.top):""}</span></span>
+      ${c.p?`<button class="btn" data-copy="${esc(c.p)}" style="flex:none">Копировать</button>`:""}</div>`).join("")}</div>`;
+  if(Object.keys(CL).length&&!q)h+=`<button class="btn danger" id="clClear" style="align-self:flex-start">Удалить всех клиентов с телефона</button><div id="clConfirm" hidden class="empty">Удалить весь список клиентов с этого телефона? Сеансы и зарплата не пострадают. <div class="ctl-row" style="justify-content:center;margin-top:8px"><button class="btn" id="clNo">Отмена</button><button class="btn primary" id="clYes">Удалить</button></div></div>`;
+  return h+`</div>`;
+}
+function copyText(t){
+  try{const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();const ok=document.execCommand("copy");ta.remove();if(ok){toast("Скопировано: "+t);return}}catch(e){}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(()=>toast("Скопировано: "+t),()=>toast("Не получилось скопировать, выделите номер пальцем"));
+  else toast("Не получилось скопировать, выделите номер пальцем");
 }
 
 /* ================= Altegio ================= */
@@ -561,6 +601,11 @@ async function altImport(silent){
       const st=String(rec.staff_id!=null?rec.staff_id:(rec.staff&&rec.staff.id)||"0");
       const stn=(rec.staff&&rec.staff.name)||"";
       if(st!=="0"&&!seen.some(x=>x.id===st))seen.push({id:st,name:stn||""});
+      const cl=rec.client&&typeof rec.client==="object"?rec.client:null;
+      const cPhone=cl?String(cl.phone||"").trim():"",cName=cl?[cl.name,cl.surname].filter(Boolean).join(" ").trim():"";
+      const cid=cl&&(cl.id||cPhone)?String(cl.id||cPhone):"";
+      if(cid){const c=CL[cid]=CL[cid]||{n:"",p:"",v:{}};if(cName)c.n=cName;if(cPhone)c.p=cPhone;
+        (rec.services||[]).forEach(sv=>{c.v["a"+rec.id+"-"+sv.id]={d:date,s:sv.title||"Услуга",st}})}
       (rec.services||[]).forEach(sv=>{
         const key="a"+rec.id+"-"+sv.id; valid.add(key);
         const title=sv.title||"Услуга";
@@ -590,6 +635,9 @@ async function altImport(silent){
       m.items=m.items.filter(i=>!(i.alt&&i.date>=from&&i.date<=to&&!valid.has(i.alt)));
       if(m.items.length!==n){removed+=n-m.items.length;touched.add(k)}
     });
+    /* у клиентов убираем визиты этого периода, которых в Altegio больше нет */
+    Object.keys(CL).forEach(id=>{const c=CL[id];Object.keys(c.v).forEach(k=>{const v=c.v[k];if(v.d>=from&&v.d<=to&&!valid.has(k))delete c.v[k]});if(!Object.keys(c.v).length)delete CL[id]});
+    clSave();
     mergeStaff(seen.filter(s=>s.name));
     syncServiceNames();
     saveSettings();
@@ -676,6 +724,10 @@ document.querySelector(".tabs").onclick=e=>{const b=e.target.closest("[data-tab]
 const view=document.getElementById("view");
 view.addEventListener("click",e=>{
   if(e.target.closest("#altImport"))return altImport(false);
+  const cp=e.target.closest("[data-copy]"); if(cp)return copyText(cp.dataset.copy);
+  if(e.target.closest("#clClear")){document.getElementById("clConfirm").hidden=false;return}
+  if(e.target.closest("#clNo")){document.getElementById("clConfirm").hidden=true;return}
+  if(e.target.closest("#clYes")){Object.keys(CL).forEach(k=>delete CL[k]);clSave();toast("Список клиентов удалён");return render()}
   if(e.target.closest("#altReapply"))return reapplyRates();
   if(e.target.closest("#altSvc"))return altLoadServices();
   if(e.target.closest("#altStaff")){A.busy=true;render();return altLoadStaff().then(()=>{A.busy=false;altSave();render()})}
@@ -688,6 +740,11 @@ view.addEventListener("click",e=>{
   const ds_=e.target.closest("[data-delsvc]"); if(ds_&&S.staff!=="all"){S.settings.ss[S.staff]=staffSvcs(S.staff).filter(s=>s.id!==ds_.dataset.delsvc);saveSettings();return render()}
   if(e.target.closest("#addSvc")&&S.staff!=="all"){staffSvcs(S.staff).push({id:uid(),name:"Новая процедура",price:0,type:"fixed",val:""});saveSettings();render();
     const ins=view.querySelectorAll('[data-sf="name"]');const last=ins[ins.length-1];if(last){last.focus();last.select()}}
+});
+view.addEventListener("input",e=>{
+  if(e.target.id!=="clSearch")return;
+  clQuery=e.target.value;const pos=e.target.selectionStart;render();
+  const el=document.getElementById("clSearch");if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(_){}}
 });
 view.addEventListener("change",async e=>{
   const el=e.target;
